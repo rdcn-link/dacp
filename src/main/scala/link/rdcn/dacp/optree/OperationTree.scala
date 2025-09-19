@@ -32,6 +32,15 @@ trait FlowExecutionContext extends ExecutionContext {
   def getRepositoryClient(): Option[OperatorRepository]
 }
 
+/**
+ * Tree-structured operation collection with hierarchical execution
+ * Example:
+ * op1 op2 op3
+ *  \   /  /
+ *   op4 op5
+ *     \ /
+ *     op6
+ */
 object OperationTree {
   def fromJsonString(json: String, sourceList: ListBuffer[String]): Operation = {
     val parsed: JSONObject = new JSONObject(json)
