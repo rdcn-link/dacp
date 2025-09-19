@@ -87,7 +87,16 @@
       <version>5.13.1</version>
       <scope>test</scope>
     </dependency>
-
+    <dependency>
+      <groupId>com.github.serceman</groupId>
+      <artifactId>jnr-fuse</artifactId>
+      <version>0.5.5</version>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-context</artifactId>
+      <version>5.3.13</version>
+    </dependency>
   </dependencies>
   <build>
     <plugins>

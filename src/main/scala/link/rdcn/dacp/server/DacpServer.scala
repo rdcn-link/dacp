@@ -99,7 +99,7 @@ case class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, au
     val props = loadProperties(s"$fairdHome" + File.separator + "conf" + File.separator + "faird.conf")
     props.setProperty(ConfigKeys.FAIRD_HOME, fairdHome)
     fairdConfig = FairdConfig.load(props)
-    start(fairdHome)
+    start(fairdConfig)
   }
 
   def doCook(request: CookRequest, response: CookResponse): Unit = {
