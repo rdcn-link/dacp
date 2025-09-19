@@ -2,8 +2,8 @@ package link.rdcn.dacp.server
 
 import com.sun.management.OperatingSystemMXBean
 import link.rdcn.dacp.ConfigKeys.{FAIRD_HOST_DOMAIN, FAIRD_HOST_NAME, FAIRD_HOST_PORT, FAIRD_HOST_POSITION, FAIRD_HOST_TITLE, FAIRD_TLS_CERT_PATH, FAIRD_TLS_ENABLED, FAIRD_TLS_KEY_PATH, LOGGING_FILE_NAME, LOGGING_LEVEL_ROOT, LOGGING_PATTERN_CONSOLE, LOGGING_PATTERN_FILE}
-import link.rdcn.dacp.FairdConfig
-import link.rdcn.dacp.optree.OperationTree
+import link.rdcn.dacp.{ConfigKeys, FairdConfig}
+import link.rdcn.dacp.optree.{FlowExecutionContext, OperationTree, OperatorRepository}
 import link.rdcn.dacp.received.DataReceiver
 import link.rdcn.dacp.user.{AuthProvider, DataOperationType, KeyAuthenticatedUser, SignatureAuth}
 import link.rdcn.operation.{ExecutionContext, Operation}
@@ -18,8 +18,9 @@ import link.rdcn.util.{CodecUtils, DataUtils}
 import org.apache.jena.rdf.model.{Model, ModelFactory}
 import org.json.{JSONArray, JSONObject}
 
-import java.io.StringWriter
+import java.io.{File, FileInputStream, InputStreamReader, StringWriter}
 import java.lang.management.ManagementFactory
+import java.util.Properties
 import scala.collection.mutable.ListBuffer
 import scala.collection.JavaConverters.asScalaBufferConverter
 
@@ -92,6 +93,13 @@ case class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, au
     require(dftpConfig.isInstanceOf[FairdConfig])
     this.fairdConfig = dftpConfig.asInstanceOf[FairdConfig]
     super.start(dftpConfig)
+  }
+
+  def start(fairdHome: String): Unit = {
+    val props = loadProperties(s"$fairdHome" + File.separator + "conf" + File.separator + "faird.conf")
+    props.setProperty(ConfigKeys.FAIRD_HOME, fairdHome)
+    fairdConfig = FairdConfig.load(props)
+    start(fairdHome)
   }
 
   def doCook(request: CookRequest, response: CookResponse): Unit = {
@@ -224,7 +232,17 @@ case class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, au
 
   var baseUrl: String = s"$protocolSchema://${fairdConfig.hostPosition}:${fairdConfig.hostPort}"
 
-  private def ctx = new ExecutionContext {
+  private def loadProperties(path: String): Properties = {
+    val props = new Properties()
+    val fis = new InputStreamReader(new FileInputStream(path), "UTF-8")
+    try props.load(fis) finally fis.close()
+    props
+  }
+
+  private def ctx = new FlowExecutionContext {
+    override val pythonHome: String = ???
+    override val fairdConfig: FairdConfig = fairdConfig
+
     override def loadSourceDataFrame(dataFrameNameUrl: String): Option[DataFrame] = {
       val resourcePath = if(dataFrameNameUrl.startsWith(baseUrl)) dataFrameNameUrl.stripPrefix(baseUrl)
       else dataFrameNameUrl
@@ -238,6 +256,8 @@ case class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, au
           None
       }
     }
+
+    override def getRepositoryClient(): Option[OperatorRepository] = ???
   }
 
   private def getHostInfoString(): String = {
