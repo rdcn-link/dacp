@@ -1,14 +1,15 @@
 package link.rdcn.server
 
-import link.rdcn.{ConfigLoader, FairdConfig, struct}
-import link.rdcn.client.dacp.DacpClient
+import link.rdcn.ConfigLoader
+import link.rdcn.dacp.FairdConfig
+import link.rdcn.dacp.client.DacpClient
+import link.rdcn.dacp.received.DataReceiver
+import link.rdcn.dacp.server.DacpServer
+import link.rdcn.dacp.user.{AuthProvider, DataOperationType}
 import link.rdcn.provider.{DataFrameDocument, DataFrameStatistics, DataProvider}
-import link.rdcn.struct.ValueType.{LongType, StringType}
-import link.rdcn.struct.{DataFrame, DataStreamSource, Row, StructType}
-import link.rdcn.user.{AuthProvider, AuthenticatedUser, Credentials, DataOperationType, UsernamePassword}
-import link.rdcn.util.ClosableIterator
-import link.rdcn.received.DataReceiver
-import link.rdcn.server.dacp.DacpServer
+import link.rdcn.struct.ValueType.StringType
+import link.rdcn.struct.{ClosableIterator, DataFrame, DataStreamSource, Row, StructType}
+import link.rdcn.user.{AuthenticatedUser, Credentials, UsernamePassword}
 import org.apache.jena.rdf.model.Model
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.xml.XmlBeanFactory

@@ -4,9 +4,8 @@ import link.rdcn.TestBase.getOutputDir
 import link.rdcn.TestProvider
 import link.rdcn.TestProvider._
 import link.rdcn.client.DataFrameOperationTest._
-import link.rdcn.client.recipe.{Flow, SourceNode, Transformer11}
+import link.rdcn.dacp.recipe.{ExecutionResult, Flow, SourceNode, Transformer11}
 import link.rdcn.struct._
-import link.rdcn.util.ExceptionHandler
 import org.apache.arrow.flight.FlightRuntimeException
 import org.junit.jupiter.api.Assertions.{assertEquals, assertThrows, assertTrue}
 import org.junit.jupiter.api.Test
@@ -173,7 +172,7 @@ class DataFrameOperationTest extends TestProvider {
         printWriter.write(getLine(row))
       }
     } catch {
-      case e: FlightRuntimeException => println(ExceptionHandler.getErrorCode(e))
+      case e: FlightRuntimeException => e.printStackTrace()
     }
 
     printWriter.flush()
@@ -201,7 +200,7 @@ class DataFrameOperationTest extends TestProvider {
         printWriter.write(getLine(row))
       }
     } catch {
-      case e: FlightRuntimeException => println(ExceptionHandler.getErrorCode(e))
+      case e: FlightRuntimeException => e.printStackTrace()
     }
 
     printWriter.flush()
@@ -228,7 +227,7 @@ class DataFrameOperationTest extends TestProvider {
         printWriter.write(getLine(row))
       }
     } catch {
-      case e: FlightRuntimeException => println(ExceptionHandler.getErrorCode(e))
+      case e: FlightRuntimeException => e.printStackTrace()
     }
 
     printWriter.flush()
@@ -575,7 +574,7 @@ class DataFrameOperationTest extends TestProvider {
         printWriter.write(s"${row._1},${row._2}\n")
       }
     } catch {
-      case e: FlightRuntimeException => println(ExceptionHandler.getErrorCode(e))
+      case e: FlightRuntimeException => e.printStackTrace()
     }
 
     printWriter.flush()

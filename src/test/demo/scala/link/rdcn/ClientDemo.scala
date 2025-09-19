@@ -1,17 +1,18 @@
 package link.rdcn
 
-import link.rdcn.client.dacp.DacpClient
-import link.rdcn.client.recipe.{Flow, FlowNode}
-import link.rdcn.client.RemoteDataFrameProxy
-import link.rdcn.provider.DataFrameDocument
-import link.rdcn.struct.{Blob, DataFrame, ExecutionResult, Row}
+import link.rdcn.TestBase.getResourcePath
+import link.rdcn.dacp.client.DacpClient
+import link.rdcn.dacp.recipe.{ExecutionResult, Flow, FlowNode}
+import link.rdcn.dacp.{ConfigKeys, ResourceKeys}
+import link.rdcn.provider.{DataFrameDocument, DataFrameStatistics}
+import link.rdcn.struct.{Blob, DFRef, DataFrame, DataStreamSource, DefaultDataFrame, Row}
 import link.rdcn.user.UsernamePassword
 import org.apache.commons.io.IOUtils
 import org.apache.jena.rdf.model.Model
 
-import java.io.FileOutputStream
+import java.io.{File, FileOutputStream}
 import java.nio.file.{Path, Paths}
-import scala.collection.JavaConverters._
+import scala.collection.mutable
 
 /**
  * @Author Yomi
@@ -20,14 +21,17 @@ import scala.collection.JavaConverters._
  * @Modified By:
  */
 object ClientDemo {
+  val provider = new TestDemoProvider
+  TestBase
+  val tlsFile = new File(Paths.get(getResourcePath("tls"), "faird").toString)
 
   def main(args: Array[String]): Unit = {
     // 通过用户名密码非加密连接FairdClient
-    //     val dc: FairdClient = FairdClient.connect("dacp://localhost:3101", UsernamePassword("admin@instdb.cn", "admin001"));
+    //    val dc: DacpClient = DacpClient.connect("dacp://localhost:3101", UsernamePassword("admin@instdb.cn", "admin001"));
     // 通过用户名密码tls加密连接FairdClient
-    val dc: DacpClient = DacpClient.connectTLS("dacp://localhost:3101", UsernamePassword("admin@instdb.cn", "admin001"))
+    val dc: DacpClient = DacpClient.connectTLS("dacp://localhost:3101", tlsFile, UsernamePassword("admin@instdb.cn", "admin001"))
     // 匿名连接FairdClient
-//    val dcAnonymous: FairdClient = FairdClient.connect("dacp://localhost:3101", Credentials.ANONYMOUS());
+    //    val dcAnonymous: DacpClient = DacpClient.connect("dacp://localhost:3101", Credentials.ANONYMOUS());
 
     //获得所有的数据集名称
     println("--------------打印数据集列表--------------")
@@ -74,31 +78,35 @@ object ClientDemo {
     //打开非结构化数据的文件列表数据帧
     val dfBin: DataFrame = dc.getByPath("/bin")
 
-    //接口
-    //获得数据帧的Document，包含由Provider定义的SchemaURI等信息
-    //用户可以控制没有信息时输出的字段
-//    println("--------------打印数据帧Document--------------")
-//    val dataFrameDocument: DataFrameDocument = dfBin.asInstanceOf[RemoteDataFrameProxy].getDocument
-//    val schemaURL: String = dataFrameDocument.getSchemaURL().getOrElse("schemaURL not found")
-//    val columnURL: String = dataFrameDocument.getColumnURL("file_name").getOrElse("columnURL not found")
-//    val columnAlias: String = dataFrameDocument.getColumnAlias("file_name").getOrElse("columnAlias not found")
-//    val columnTitle: String = dataFrameDocument.getColumnTitle("file_name").getOrElse("columnTitle not found")
-//    println(schemaURL)
-//    println(columnURL)
-//    println(columnAlias)
-//    println(columnTitle)
-//    println(dfBin.schema)
-//
-//    //获得数据帧大小
-//    println("--------------打印数据帧行数和大小--------------")
-//    val df = dfBin.asInstanceOf[RemoteDataFrameProxy]
-//    val dataFrameRowCount: Long = df.getStatistics.rowCount
-//    val dataFrameSize: Long = df.getStatistics.byteSize
-//    println(dataFrameRowCount)
-//    println(dataFrameSize)
+    /**
+     * 获得数据帧的Document，包含由Provider定义的SchemaURI等信息
+     * 用户可以控制没有信息时输出的字段
+     */
+        println("--------------打印数据帧Document--------------")
+        val result = mutable.Map[String, (Long, String, String, String, DFRef)]()
+        dc.get("dacp://localhost:3101/listDataFrames/json").mapIterator(iter => iter.foreach(row => {
+          result.put(row.getAs[String](0), (row.getAs[Long](1), row.getAs[String](2), row.getAs[String](3), row.getAs[String](4), row.getAs[DFRef](5)))
+        }))
+        val dataFrameDocument: DataFrameDocument = dc.getDocument("/bin")
+        val schemaURL: String = dataFrameDocument.getSchemaURL().getOrElse("schemaURL not found")
+        val columnURL: String = dataFrameDocument.getColumnURL("file_name").getOrElse("columnURL not found")
+        val columnAlias: String = dataFrameDocument.getColumnAlias("file_name").getOrElse("columnAlias not found")
+        val columnTitle: String = dataFrameDocument.getColumnTitle("file_name").getOrElse("columnTitle not found")
+        println(schemaURL)
+        println(columnURL)
+        println(columnAlias)
+        println(columnTitle)
+        println(dfBin.schema)
 
-    //client api demo, operation demo, blob demo,dag demo
-    //    可以对数据帧进行操作 比如foreach 每行数据为一个Row对象，可以通过Tuple风格访问每一列的值
+        //获得数据帧大小
+        println("--------------打印数据帧行数和大小--------------")
+        val dataFrameStatistics: DataFrameStatistics = dc.getStatistics("/bin")
+        val dataFrameRowCount: Long = dataFrameStatistics.rowCount
+        val dataFrameSize: Long = dataFrameStatistics.byteSize
+        println(dataFrameRowCount)
+        println(dataFrameSize)
+
+    //可以对数据帧进行操作 比如foreach 每行数据为一个Row对象，可以通过Tuple风格访问每一列的值
     println("--------------打印非结构化数据文件列表数据帧--------------")
     dfBin.foreach((row: Row) => {
       //通过Tuple风格访问
@@ -109,7 +117,7 @@ object ClientDemo {
       val byteSize: Long = row.getAs[Long](3)
       //除此之外列值支持的类型还包括：Integer, Long, Float, Double, Boolean, byte[]
       //offerStream用于接受一个用户编写的处理blob InputStream的函数并确保其关闭
-      val path: Path = Paths.get("faird-core","src", "test", "demo", "data", "output", name)
+      val path: Path = Paths.get("faird-core", "src", "test", "demo", "data", "output", name)
       blob.offerStream(inputStream => {
         val outputStream = new FileOutputStream(path.toFile)
         IOUtils.copy(inputStream, outputStream)
@@ -121,11 +129,12 @@ object ClientDemo {
       println(byteSize)
     })
 
-
-    //获取数据
-    //对数据进行collect操作可以将数据帧的所有行收集到内存中，但是要注意内存溢出的问题
-    //limit操作可以限制返回的数据行数，防止内存溢出
-    //还可以打开CSV文件数据帧
+    /**
+     * 获取数据
+     * 对数据进行collect操作可以将数据帧的所有行收集到内存中，但是要注意内存溢出的问题
+     * limit操作可以限制返回的数据行数，防止内存溢出
+     * 还可以打开CSV文件数据帧
+     */
     val dfCsv: DataFrame = dc.getByPath("/csv/data_1.csv")
     val csvRows: Seq[Row] = dfCsv.limit(1).collect()
     println("--------------打印结构化数据 /csv/data_1.csv 数据帧--------------")
@@ -149,13 +158,17 @@ object ClientDemo {
     println("--------------打印结构化数据 /csv/data_1.csv 经过select操作后的数据帧--------------")
     selectedRows.take(3).foreach(println)
 
-    //自定义算子和DAG执行图对数据帧进行操作
-    //构建数据源节点
+    /**
+     * 自定义算子和DAG执行图对数据帧进行操作
+     * 构建数据源节点
+     */
     val sourceNodeA: FlowNode = FlowNode.source("/csv/data_1.csv")
     val sourceNodeB: FlowNode = FlowNode.source("/csv/data_2.csv")
 
-    //也可以构建自定义算子节点对象
-    //自定义一个map算子 比如对第一列加1
+    /**
+     * 也可以构建自定义算子节点对象
+     * 自定义一个map算子 比如对第一列加1
+     */
     val udfMap: FlowNode = FlowNode.ofScalaFunction(dataFrame =>
       dataFrame.map(row => Row.fromTuple(row.getAs[Long](0) + 1, row.get(1))))
 
@@ -166,8 +179,10 @@ object ClientDemo {
         value <= 3L
       }))
 
-    //对于线性依赖可以通过pipe直接构造DAG
-    //至少一个节点
+    /**
+     * 对于线性依赖可以通过pipe直接构造DAG
+     * 至少一个节点
+     */
     val transformerDAGMin: Flow = Flow.pipe(sourceNodeA)
     val minDAGDfs: ExecutionResult = dc.execute(transformerDAGMin)
     println("--------------打印最小DAG直接获取的数据帧--------------")
@@ -176,16 +191,18 @@ object ClientDemo {
     //通过名字获得指定数据帧结果
     minDAGDfs.get("1").limit(3).foreach(row => println(row))
     //获得处理结果的Map，name是数据帧名称，df是对应的数据帧
-    minDAGDfs.map().foreach { case (name, df) => df.limit(3).foreach(row => println(name,row))}
+    minDAGDfs.map().foreach { case (name, df) => df.limit(3).foreach(row => println(name, row)) }
 
     //可以多个节点
     val transformerDAGPipe: Flow = Flow.pipe(sourceNodeA, udfFilter, udfMap)
     val pipeDAGDfs: ExecutionResult = dc.execute(transformerDAGPipe)
     println("--------------打印执行链式DAG的数据帧--------------")
-    pipeDAGDfs.map().foreach { case (_, df) => df.foreach(row => println(row))}
+    pipeDAGDfs.map().foreach { case (_, df) => df.foreach(row => println(row)) }
 
-    //也可以通过构建边Map和节点Map构建DAG执行图
-    //构建DAG执行图A -> B ，A是数据源节点B是自定义filter算子
+    /**
+     * 也可以通过构建边Map和节点Map构建DAG执行图
+     * 构建DAG执行图A -> B ，A是数据源节点B是自定义filter算子
+     */
     val nodesMap: Map[String, FlowNode] = Map(
       "A" -> sourceNodeA,
       "B" -> udfFilter
@@ -199,12 +216,14 @@ object ClientDemo {
     //执行DAG图，返回一个数据帧列表
     val simpleDfs: ExecutionResult = dc.execute(transformerDAG)
     println("--------------打印自定义filter算子操作后的数据帧--------------")
-    simpleDfs.map().foreach { case (_, df) => df.foreach(row => println(row))}
+    simpleDfs.map().foreach { case (_, df) => df.foreach(row => println(row)) }
 
-    //可以构建更复杂的多数据源节点和操作的DAG
-    //   A  B
-    //   |/\|
-    //   C  D
+    /**
+     * 可以构建更复杂的多数据源节点和操作的DAG
+     * A  B
+     * |/\|
+     * C  D
+     */
     val transformerComplexDAG: Flow = Flow(
       Map("A" -> sourceNodeA,
         "B" -> sourceNodeB,
@@ -215,7 +234,14 @@ object ClientDemo {
     )
     val complexDfs: ExecutionResult = dc.execute(transformerComplexDAG)
     println("--------------打印执行自定义DAG后的数据帧--------------")
-    complexDfs.map().foreach { case (_, df) => df.limit(3).foreach(row => println(row))}
+    complexDfs.map().foreach { case (_, df) => df.limit(3).foreach(row => println(row)) }
+
+    //可以通过put操作向服务器上传DataFrame
+    val dataStreamSource: DataStreamSource = provider.dataProvider.getDataStreamSource("/bin")
+    val dataFrame: DataFrame = DefaultDataFrame(dataStreamSource.schema, dataStreamSource.iterator)
+    val batchSize = 100
+    dc.put(dataFrame, batchSize)
+
 
   }
 }

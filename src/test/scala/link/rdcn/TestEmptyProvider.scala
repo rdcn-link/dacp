@@ -1,8 +1,9 @@
 package link.rdcn
 
 import link.rdcn.TestBase.{getOutputDir, getResourcePath}
-import link.rdcn.received.DataReceiver
-import link.rdcn.user.{AuthProvider, AuthenticatedUser, Credentials, DataOperationType}
+import link.rdcn.dacp.received.DataReceiver
+import link.rdcn.dacp.user.{AuthProvider, DataOperationType}
+import link.rdcn.user.{AuthenticatedUser, Credentials}
 import link.rdcn.struct.{DataFrame, DataStreamSource}
 import org.apache.arrow.flight.Location
 import org.apache.arrow.memory.{BufferAllocator, RootAllocator}

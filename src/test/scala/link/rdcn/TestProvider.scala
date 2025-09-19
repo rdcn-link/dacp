@@ -6,19 +6,17 @@
  */
 package link.rdcn
 
-import link.rdcn.ErrorCode.{INVALID_CREDENTIALS, USER_NOT_FOUND, USER_NOT_LOGGED_IN}
 import link.rdcn.TestBase._
-import link.rdcn.ConfigKeys._
-import link.rdcn.client.dacp.DacpClient
-import link.rdcn.received.DataReceiver
-import link.rdcn.server.dacp.DacpServer
-import link.rdcn.server.dftp.BlobRegistry
-import link.rdcn.server.exception.AuthorizationException
-import link.rdcn.struct.{DataFrame, StructType}
+import link.rdcn.dacp.ConfigKeys._
+import link.rdcn.dacp.client.DacpClient
+import link.rdcn.dacp.received.DataReceiver
+import link.rdcn.dacp.server.DacpServer
+import link.rdcn.dacp.user.{AuthProvider, DataOperationType}
+import link.rdcn.server.BlobRegistry
 import link.rdcn.struct.ValueType.{DoubleType, LongType}
-import link.rdcn.user.{AuthProvider, AuthenticatedUser, Credentials, DataOperationType, UsernamePassword}
+import link.rdcn.struct.{DataFrame, StructType}
+import link.rdcn.user.{AuthenticatedUser, Credentials, UsernamePassword}
 import link.rdcn.util.DataUtils
-import link.rdcn.util.DataUtils.listFiles
 import org.junit.jupiter.api.{AfterAll, BeforeAll}
 
 import java.io.File
@@ -29,6 +27,14 @@ trait TestProvider {
 }
 
 object TestProvider {
+  ConfigLoader.init(Paths.get(getResourcePath("")).toString)
+
+  val prefix = "dacp://" + ConfigLoader.fairdConfig.hostPosition + ":" + ConfigLoader.fairdConfig.hostPort
+  val permissions = Map(
+    adminUsername -> Set("/csv/data_1.csv", "/bin",
+      "/csv/data_2.csv", "/csv/data_1.csv", "/csv/invalid.csv", "/excel/data.xlsx").map(path => prefix + path)
+  )
+
   val baseDir = getOutputDir("test_output")
   // 生成的临时目录结构
   val binDir = Paths.get(baseDir, "bin").toString
@@ -51,39 +57,36 @@ object TestProvider {
     def getUserName: String = userName
   }
 
-  val authprovider = new AuthProvider {
+  val authProvider = new AuthProvider {
 
     override def authenticate(credentials: Credentials): AuthenticatedUser = {
       if (credentials.isInstanceOf[UsernamePassword]) {
         val usernamePassword = credentials.asInstanceOf[UsernamePassword]
         if (usernamePassword.username == null && usernamePassword.password == null) {
-          throw new AuthorizationException(USER_NOT_FOUND)
+          sendErrorWithFlightStatus(404,"User not found!")
         }
         else if (usernamePassword.username == adminUsername && usernamePassword.password == adminPassword) {
           new TestAuthenticatedUser(adminUsername, genToken())
         } else if (usernamePassword.username == userUsername && usernamePassword.password == userPassword) {
           new TestAuthenticatedUser(adminUsername, genToken())
         }
-        else if (usernamePassword.username == anonymousUsername) {
-          new TestAuthenticatedUser(anonymousUsername, genToken())
-        }
-        else if (usernamePassword.username != adminUsername) {
-          throw new AuthorizationException(USER_NOT_FOUND)
+        else if (usernamePassword.username != "admin") {
+          sendErrorWithFlightStatus(403,"User unauthorized!")
         } else {
-          throw new AuthorizationException(INVALID_CREDENTIALS)
+          sendErrorWithFlightStatus(0,"User authenticate unknown error!")
         }
       } else if (credentials == Credentials.ANONYMOUS) {
         new TestAuthenticatedUser(anonymousUsername, genToken())
       }
       else {
-        throw new AuthorizationException(INVALID_CREDENTIALS)
+        sendErrorWithFlightStatus(400,"Invalid credentials!")
       }
     }
 
     override def checkPermission(user: AuthenticatedUser, dataFrameName: String, opList: List[DataOperationType]): Boolean = {
       val userName = user.asInstanceOf[TestAuthenticatedUser].getUserName
       if (userName == anonymousUsername)
-        throw new AuthorizationException(USER_NOT_LOGGED_IN)
+        sendErrorWithFlightStatus(403,"User not logged in!")
       permissions.get(userName) match { // 用 get 避免 NoSuchElementException
         case Some(allowedFiles) => allowedFiles.contains(dataFrameName)
         case None => false // 用户不存在或没有权限
@@ -130,7 +133,7 @@ object TestProvider {
   def getServer: DacpServer = synchronized {
     if (fairdServer.isEmpty) {
       ConfigLoader.init(Paths.get(getResourcePath("")).toString)
-      val s = new DacpServer(dataProvider, dataReceiver, authprovider)
+      val s = new DacpServer(dataProvider, dataReceiver, authProvider)
       s.start(ConfigLoader.fairdConfig)
       //      println(s"Server (Location): Listening on port ${s.getPort}")
       fairdServer = Some(s)

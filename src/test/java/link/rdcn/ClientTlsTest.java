@@ -1,9 +1,11 @@
 package link.rdcn;
 
-import link.rdcn.dacp.client.DacpClient
+import link.rdcn.dacp.client.DacpClient;
 import link.rdcn.user.Credentials;
 import scala.collection.Iterator;
 import scala.collection.Seq;
+
+import java.io.File;
 
 /**
  * ServerTest Description
@@ -14,8 +16,7 @@ import scala.collection.Seq;
  */
 public class ClientTlsTest {
     public static void main(String[] args) {
-        System.setProperty("javax.net.ssl.trustStore", "/Users/renhao/Downloads/faird-java-http2/src/main/resources/conf/faird");
-        DacpClient dc = DacpClient.connectTLS("dacp://localhost:3101", Credentials.ANONYMOUS());
+        DacpClient dc = DacpClient.connectTLS("dacp://localhost:3101", new File("/Users/renhao/Downloads/faird-java-http2/src/main/resources/conf/faird"), Credentials.ANONYMOUS());
         Seq<String> stringSeq = dc.listDataSetNames();
         Iterator<String> iterator = stringSeq.iterator();
 

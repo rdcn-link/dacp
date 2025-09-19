@@ -6,8 +6,8 @@
  */
 package link.rdcn;
 
-import link.rdcn.received.DataReceiver;
-import link.rdcn.server.dacp.DacpServer;
+import link.rdcn.dacp.received.DataReceiver;
+import link.rdcn.dacp.server.DacpServer;
 import link.rdcn.struct.DataFrame;
 
 public class JServerDemo {

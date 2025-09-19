@@ -1,28 +1,28 @@
 package link.rdcn.dacp.server
 
 import com.sun.management.OperatingSystemMXBean
-import link.rdcn.dacp.ConfigKeys.{FAIRD_HOST_DOMAIN, FAIRD_HOST_NAME, FAIRD_HOST_PORT, FAIRD_HOST_POSITION, FAIRD_HOST_TITLE, FAIRD_TLS_CERT_PATH, FAIRD_TLS_ENABLED, FAIRD_TLS_KEY_PATH, LOGGING_FILE_NAME, LOGGING_LEVEL_ROOT, LOGGING_PATTERN_CONSOLE, LOGGING_PATTERN_FILE}
-import link.rdcn.dacp.{ConfigKeys, FairdConfig}
-import link.rdcn.dacp.optree.{FlowExecutionContext, OperationTree, OperatorRepository}
+import link.rdcn.dacp.ConfigKeys._
+import link.rdcn.dacp.optree.{FlowExecutionContext, OperationTree, OperatorRepository, RepositoryClient}
 import link.rdcn.dacp.received.DataReceiver
 import link.rdcn.dacp.user.{AuthProvider, DataOperationType, KeyAuthenticatedUser, SignatureAuth}
-import link.rdcn.operation.{ExecutionContext, Operation}
-import link.rdcn.{DftpConfig, Logging}
+import link.rdcn.dacp.{ConfigKeys, FairdConfig}
+import link.rdcn.operation.Operation
 import link.rdcn.provider.DataProvider
-import link.rdcn.server.{ActionRequest, ActionResponse, DftpServiceHandler, GetRequest, GetResponse, PutRequest, PutResponse}
 import link.rdcn.server.dftp.DftpServer
+import link.rdcn.server._
 import link.rdcn.struct.ValueType.{LongType, RefType, StringType}
-import link.rdcn.struct.{DFRef, DataFrame, DataStreamSource, DefaultDataFrame, Row, StructType}
+import link.rdcn.struct._
 import link.rdcn.user.{AuthenticatedProvider, AuthenticatedUser, Credentials}
 import link.rdcn.util.{CodecUtils, DataUtils}
+import link.rdcn.{DftpConfig, Logging}
 import org.apache.jena.rdf.model.{Model, ModelFactory}
 import org.json.{JSONArray, JSONObject}
 
 import java.io.{File, FileInputStream, InputStreamReader, StringWriter}
 import java.lang.management.ManagementFactory
 import java.util.Properties
-import scala.collection.mutable.ListBuffer
 import scala.collection.JavaConverters.asScalaBufferConverter
+import scala.collection.mutable.ListBuffer
 
 /**
  * @Author renhao
@@ -38,7 +38,7 @@ case class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, au
   override def setAuthHandler(authenticatedProvider: AuthenticatedProvider): DftpServer =
     super.setAuthHandler(authProvider)
 
-  override def setServiceHandler(dftpServiceHandler: DftpServiceHandler): DftpServer = {
+  def setServiceHandler(): DftpServer = {
     val dftpServiceHandler =  new DftpServiceHandler {
       override def doAction(request: ActionRequest, response: ActionResponse): Unit = response.sendError(501, s"${request.getActionName()} Not Implemented")
 
@@ -99,6 +99,7 @@ case class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, au
     val props = loadProperties(s"$fairdHome" + File.separator + "conf" + File.separator + "faird.conf")
     props.setProperty(ConfigKeys.FAIRD_HOME, fairdHome)
     fairdConfig = FairdConfig.load(props)
+    baseUrl= s"$protocolSchema://${fairdConfig.hostPosition}:${fairdConfig.hostPort}"
     start(fairdConfig)
   }
 
@@ -230,7 +231,7 @@ case class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, au
     DefaultDataFrame(schema, stream)
   }
 
-  var baseUrl: String = s"$protocolSchema://${fairdConfig.hostPosition}:${fairdConfig.hostPort}"
+  var baseUrl: String = _
 
   private def loadProperties(path: String): Properties = {
     val props = new Properties()
@@ -240,7 +241,7 @@ case class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, au
   }
 
   private def ctx = new FlowExecutionContext {
-    override val pythonHome: String = ???
+    override val pythonHome: String = fairdConfig.pythonHome
     override val fairdConfig: FairdConfig = fairdConfig
 
     override def loadSourceDataFrame(dataFrameNameUrl: String): Option[DataFrame] = {
@@ -257,7 +258,7 @@ case class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, au
       }
     }
 
-    override def getRepositoryClient(): Option[OperatorRepository] = ???
+    override def getRepositoryClient(): Option[OperatorRepository] = Some(new RepositoryClient("10.0.89.38", 8088))
   }
 
   private def getHostInfoString(): String = {

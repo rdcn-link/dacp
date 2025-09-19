@@ -8,6 +8,7 @@ package link.rdcn.optree
 
 import link.rdcn.ConfigLoader
 import link.rdcn.TestBase.getResourcePath
+import link.rdcn.dacp.optree.RepositoryClient
 import link.rdcn.optree.RepositoryClientTest.{operatorClient, operatorDir}
 import org.junit.jupiter.api.Assertions.{assertEquals, assertTrue}
 import org.junit.jupiter.api.{AfterAll, Test}

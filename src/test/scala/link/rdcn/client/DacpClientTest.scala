@@ -3,6 +3,8 @@ package link.rdcn.client
 import link.rdcn.TestBase.genModel
 import link.rdcn.TestProvider
 import link.rdcn.TestProvider._
+import link.rdcn.dacp.ConfigKeys._
+import link.rdcn.dacp.ResourceKeys._
 import org.apache.jena.rdf.model.Model
 import org.junit.jupiter.api.Assertions.{assertEquals, assertTrue}
 import org.junit.jupiter.api.Test

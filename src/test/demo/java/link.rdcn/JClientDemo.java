@@ -1,7 +1,13 @@
 package link.rdcn;
 
 
-import link.rdcn.client.recipe.*;
+import link.rdcn.dacp.ConfigKeys;
+import link.rdcn.dacp.ResourceKeys;
+import link.rdcn.dacp.recipe.Flow;
+import link.rdcn.dacp.recipe.FlowNode;
+import link.rdcn.dacp.recipe.SourceNode;
+import link.rdcn.dacp.recipe.Transformer11;
+import link.rdcn.operation.SerializableFunction;
 import link.rdcn.struct.Blob;
 import link.rdcn.struct.DataFrame;
 import link.rdcn.struct.DefaultDataFrame;
@@ -17,6 +23,7 @@ import scala.Option;
 import scala.collection.JavaConverters;
 import scala.collection.Seq;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -38,7 +45,8 @@ public class JClientDemo {
 //        FairdClient dc = FairdClient.connect("dacp://localhost:3101", new UsernamePassword("admin@instdb.cn", "admin001"));
         // 通过用户名密码tls加密连接FairdClient 需要用户端进行相关配置
         // 客户端证书路径配置
-        JFairdClient dc = JFairdClient.connectTLS("dacp://localhost:3101", new UsernamePassword("admin@instdb.cn", "admin001"));
+        File tlsFile = new File(Paths.get(TestBase.getResourcePath("tls"),"faird").toString());
+        JFairdClient dc = JFairdClient.connectTLS("dacp://localhost:3101", tlsFile,new UsernamePassword("admin@instdb.cn", "admin001"));
         // 匿名连接FairdClient
 //        FairdClient dcAnonymous = FairdClient.connect("dacp://localhost:3101", Credentials.ANONYMOUS());
 

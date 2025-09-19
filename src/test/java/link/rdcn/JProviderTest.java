@@ -4,7 +4,6 @@ import link.rdcn.provider.*;
 import link.rdcn.dacp.received.DataReceiver;
 import link.rdcn.dacp.server.DacpServer;
 import link.rdcn.struct.*;
-import link.rdcn.dacp.provider.*;
 import link.rdcn.dacp.user.AuthProvider;
 import link.rdcn.user.AuthenticatedUser;
 import link.rdcn.user.Credentials;
@@ -61,10 +60,10 @@ public class JProviderTest {
              *
              * @param credentials 用户凭证对象，包含用户的登录信息。
              * @return 一个经过验证的用户对象。
-             * @throws AuthorizationException 如果身份验证失败，则抛出此类异常，需要Provider按需求实现。
+             * @throws org.apache.arrow.flight.FlightRuntimeException 如果身份验证失败，则抛出此类异常，需要Provider按需求实现。
              */
             @Override
-            public AuthenticatedUser authenticate(Credentials credentials) throws AuthorizationException {
+            public AuthenticatedUser authenticate(Credentials credentials) throws org.apache.arrow.flight.FlightRuntimeException {
                 return new TestAuthenticatedUser(UUID.randomUUID().toString());
             }
 
@@ -83,7 +82,7 @@ public class JProviderTest {
 
 
         // 创建DataProvider的实例，用于处理DataSet和DataFrame的获取逻辑
-        DataProvider dataProvider = new DataProvider() {
+        link.rdcn.provider.DataProvider dataProvider = new link.rdcn.provider.DataProvider() {
             private List<DataSet> dataSetsJavaList;
 
 
@@ -112,8 +111,8 @@ public class JProviderTest {
              */
             @Override
             public void getDataSetMetaData(String dataSetName, Model rdfModel) {
-                String hostname = ConfigBridge.getConfig().hostName(); //配置文件中 faird.hostName=cerndc
-                int port = ConfigBridge.getConfig().hostPort(); //faird.hostPort=3101
+                String hostname = ConfigLoader.getConfig().hostName(); //配置文件中 faird.hostName=cerndc
+                int port = ConfigLoader.getConfig().hostPort(); //faird.hostPort=3101
                 String dataSetID = "根据dataSetName拿ID";
                 String datasetURI = "dacp://" + hostname + ":" + port + "/" + dataSetID;
                 Resource datasetRes = rdfModel.createResource(datasetURI);
@@ -173,7 +172,7 @@ public class JProviderTest {
              * @return DataFrameDocument
              */
             @Override
-            public DataFrameDocument getDocument(String dataFrameName) {
+            public link.rdcn.provider.DataFrameDocument getDocument(String dataFrameName) {
                 return null;
             }
 
@@ -185,7 +184,7 @@ public class JProviderTest {
              * @return DataFrameStatistics
              */
             @Override
-            public DataFrameStatistics getStatistics(String dataFrameName) {
+            public link.rdcn.provider.DataFrameStatistics getStatistics(String dataFrameName) {
                 return null;
             }
 

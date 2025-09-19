@@ -1,21 +1,19 @@
 package link.rdcn.server.union
 
-import link.rdcn.provider.{DataFrameDocument, DataFrameStatistics, DataProvider}
-import link.rdcn.client.dacp.DacpClient
-import link.rdcn.client.recipe.{FlowNode, SourceNode, Flow, Transformer21}
-import link.rdcn.client.union.UnionClient
 import link.rdcn.ConfigLoader
+import link.rdcn.dacp.client.{DacpClient, UnionClient}
+import link.rdcn.dacp.recipe.{Flow, FlowNode, SourceNode, Transformer21}
+import link.rdcn.dacp.server.{AllowAllAuthProvider, DacpServer}
+import link.rdcn.dacp.union.UnionServer
+import link.rdcn.provider.{DataFrameDocument, DataFrameStatistics, DataProvider}
 import link.rdcn.server.DataReceiverTest
-import link.rdcn.server.dacp.DacpServer
-import link.rdcn.server.dftp.AllowAllAuthProvider
 import link.rdcn.struct.ValueType.StringType
-import link.rdcn.struct.{DataFrame, DataStreamSource, DefaultDataFrame, Row, StructType}
+import link.rdcn.struct._
 import link.rdcn.user.Credentials
-import link.rdcn.util.ClosableIterator
 import org.apache.arrow.flight.FlightRuntimeException
 import org.apache.jena.rdf.model.Model
-import org.junit.jupiter.api.{AfterAll, BeforeAll, Test}
 import org.junit.jupiter.api.Assertions._
+import org.junit.jupiter.api.{AfterAll, BeforeAll, Test}
 
 import java.nio.file.Paths
 import java.util

@@ -5,8 +5,9 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.stream.scaladsl.{FileIO, Source}
 import akka.util.ByteString
-import link.rdcn.operation.LangType
-import link.rdcn.struct.DataFrame
+import link.rdcn.operation.{FunctionWrapper, LangType}
+import link.rdcn.struct.{ClosableIterator, DataFrame, Row}
+import link.rdcn.util.DataUtils.getDataFrameByStream
 import org.json.JSONObject
 
 import java.io.File
@@ -29,13 +30,27 @@ trait OperatorRepository {
 
 class RepositoryClient(host: String = "localhost", port: Int = 8088) extends OperatorRepository{
   override def executeOperator(functionId: String, inputs: Seq[DataFrame],  ctx: FlowExecutionContext): DataFrame = {
-    getOperatorInfo(functionId).map(jo => jo.getString("type")) match {
+    val operatorDir = Paths.get(getClass.getClassLoader.getResource("").toURI).toString
+    val downloadFuture = downloadPackage(functionId, operatorDir)
+    Await.result(downloadFuture, 30.seconds)
+    val infoFuture = getOperatorInfo(functionId)
+    val info = Await.result(infoFuture, 30.seconds)
+    val fileName = info.get("packageName").toString
+    val filePath = Paths.get(operatorDir, fileName).toString()
+    val functionName = info.get("functionName").toString
+    info.get("type") match {
       case LangType.JAVA_JAR.name =>
-        val op = JavaJar()
+        val op = JavaJar(filePath, functionName)
         op.applyToDataFrames(inputs, ctx)
-      case LangType
+      case LangType.CPP_BIN.name =>
+        val op = CppBin(filePath)
+        op.applyToDataFrames(inputs, ctx)
+      case LangType.PYTHON_BIN.name =>
+        val op = PythonBin(functionName,filePath)
+        op.applyToDataFrames(inputs, ctx)
+      case _ => throw new IllegalArgumentException(s"Unsupported operator type: ${info.get("type")}")
+
     }
-    ???
   }
 
   val baseUrl = s"http://$host:$port"
@@ -150,7 +165,7 @@ class RepositoryClient(host: String = "localhost", port: Int = 8088) extends Ope
     val info = Await.result(infoFuture, 30.seconds)
 
     val downloadUrl = s"$baseUrl/downloadPackage?id=$functionId"
-    val outputFilePath = Paths.get(targetPath, info.get("fileName").asInstanceOf[String]).toString // 下载文件保存路径
+    val outputFilePath = Paths.get(targetPath, info.get("packageName").asInstanceOf[String]).toString // 下载文件保存路径
 
     // 创建 HTTP GET 请求
     val request = HttpRequest(

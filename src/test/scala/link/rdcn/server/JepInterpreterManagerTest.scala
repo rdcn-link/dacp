@@ -6,12 +6,15 @@
  */
 package link.rdcn.server
 
-import link.rdcn.optree.JepInterpreterManager
+import link.rdcn.dacp.optree.JepInterpreterManager
+import link.rdcn.operation.SharedInterpreterManager
 import org.junit.jupiter.api.Test
 
 class JepInterpreterManagerTest {
+
   @Test
   def getJepTest(): Unit = {
-    val jep = JepInterpreterManager.getInterpreter
+    val jep = SharedInterpreterManager.getInterpreter
+    jep.close()
   }
 }

@@ -1,9 +1,8 @@
 package link.rdcn.client
 
+import link.rdcn.TestProvider
 import link.rdcn.TestProvider.dc
-import link.rdcn.util.ExceptionHandler
-import link.rdcn.{ErrorCode, TestProvider}
-import org.apache.arrow.flight.FlightRuntimeException
+import org.apache.arrow.flight.{CallStatus, FlightRuntimeException}
 import org.junit.jupiter.api.Assertions.{assertEquals, assertThrows}
 import org.junit.jupiter.api.Test
 
@@ -17,6 +16,6 @@ class ResourceUnavailableTest extends TestProvider {
       classOf[FlightRuntimeException],
       () => df.foreach(_ => {})
     )
-    assertEquals(ErrorCode.DATAFRAME_NOT_EXIST, ExceptionHandler.getErrorCode(serverException))
+    assertEquals(CallStatus.UNAUTHORIZED, serverException.status())
   }
 }

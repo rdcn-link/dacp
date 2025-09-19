@@ -3,7 +3,7 @@ package link.rdcn.dacp.client
 import link.rdcn.client.{DftpClient, RemoteDataFrameProxy, UrlValidator}
 import link.rdcn.dacp.optree.{RepositoryOperator, TransformFunctionWrapper, TransformerNode}
 import link.rdcn.dacp.recipe.{ExecutionResult, Flow, FlowPath, RepositoryNode, SourceNode, Transformer11, Transformer21}
-import link.rdcn.operation.{DataFrameCall11, DataFrameCall21, FunctionWrapper, LangType, Operation, SerializableFunction, SourceOp}
+import link.rdcn.operation.{DataFrameCall11, DataFrameCall21, LangType, Operation, SerializableFunction, SourceOp}
 import link.rdcn.provider.{DataFrameDocument, DataFrameStatistics}
 import link.rdcn.struct.{ClosableIterator, DFRef, DataFrame, DefaultDataFrame, Row, StructType}
 import link.rdcn.user.Credentials
@@ -12,7 +12,7 @@ import org.apache.arrow.flight.Ticket
 import org.apache.jena.rdf.model.{Model, ModelFactory}
 import org.json.{JSONArray, JSONObject}
 
-import java.io.StringReader
+import java.io.{File, StringReader}
 import scala.collection.JavaConverters.asScalaIteratorConverter
 import scala.collection.mutable
 
@@ -189,7 +189,8 @@ object DacpClient {
     }
   }
 
-  def connectTLS(url: String, credentials: Credentials = Credentials.ANONYMOUS): DacpClient = {
+  def connectTLS(url: String, file: File, credentials: Credentials = Credentials.ANONYMOUS): DacpClient = {
+    System.setProperty("javax.net.ssl.trustStore", file.getAbsolutePath)
     urlValidator.validate(url) match {
       case Right(parsed) =>
         val client = new DacpClient(parsed._1, parsed._2.getOrElse(3101), true)
