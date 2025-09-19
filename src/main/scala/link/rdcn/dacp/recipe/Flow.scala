@@ -1,7 +1,5 @@
 package link.rdcn.dacp.recipe
 
-import link.rdcn.dacp.optree.RemoteSourceProxyOp
-
 import scala.annotation.varargs
 
 /**
@@ -71,7 +69,6 @@ case class Flow(
     if (rootNodes.isEmpty) throw new IllegalArgumentException("Invalid DAG: no root nodes found, graph might contain cycles or be empty")
     rootNodes.foreach(rootKey => nodes.get(rootKey) match {
       case Some(_: SourceNode) => // 合法，继续
-      case Some(_: RemoteSourceProxyOp) =>
       case Some(other) => throw new IllegalArgumentException(s"Invalid DAG: root node '$other' is not of type SourceOp, but ${other.getClass.getSimpleName}.")
       case None => throw new IllegalArgumentException(s"Invalid DAG: root node '$rootKey' is not defined in the node map.")
     })
