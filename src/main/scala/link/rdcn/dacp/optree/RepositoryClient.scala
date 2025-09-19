@@ -5,6 +5,7 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.stream.scaladsl.{FileIO, Source}
 import akka.util.ByteString
+import link.rdcn.operation.LangType
 import link.rdcn.struct.DataFrame
 import org.json.JSONObject
 
@@ -27,7 +28,15 @@ trait OperatorRepository {
 }
 
 class RepositoryClient(host: String = "localhost", port: Int = 8088) extends OperatorRepository{
-  override def executeOperator(functionId: String, inputs: Seq[DataFrame],  ctx: FlowExecutionContext): DataFrame = ???
+  override def executeOperator(functionId: String, inputs: Seq[DataFrame],  ctx: FlowExecutionContext): DataFrame = {
+    getOperatorInfo(functionId).map(jo => jo.getString("type")) match {
+      case LangType.JAVA_JAR.name =>
+        val op = JavaJar()
+        op.applyToDataFrames(inputs, ctx)
+      case LangType
+    }
+    ???
+  }
 
   val baseUrl = s"http://$host:$port"
 

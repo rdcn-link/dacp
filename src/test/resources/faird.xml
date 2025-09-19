@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="
+           http://www.springframework.org/schema/beans
+           http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <bean id="dataProvider" class="link.rdcn.server.DataProviderTest"></bean>
+    <bean id="authProvider" class="link.rdcn.server.AuthorProviderTest"></bean>
+    <bean id="dataReceiver" class="link.rdcn.server.DataReceiverTest"></bean>
+    <bean id="fairdConfig" class="link.rdcn.FairdConfig">
+        <!-- 只覆盖部分属性 -->
+        <property name="hostPort" value="8443"/>
+    </bean>
+</beans>
