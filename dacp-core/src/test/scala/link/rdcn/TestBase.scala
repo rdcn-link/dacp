@@ -168,6 +168,8 @@ abstract class DataProviderImpl extends DataProvider {
     new DataFrameDocument {
       override def getSchemaURL(): Option[String] = Some("[SchemaURL defined by provider]")
 
+      override def getDataFrameTitle(): Option[String] = Some("[title]")
+
       override def getColumnURL(colName: String): Option[String] = Some("[ColumnURL defined by provider]")
 
       override def getColumnAlias(colName: String): Option[String] = Some("[ColumnAlias defined by provider]")

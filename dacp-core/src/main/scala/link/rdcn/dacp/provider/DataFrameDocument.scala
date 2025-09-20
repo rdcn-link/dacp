@@ -9,6 +9,8 @@ package link.rdcn.provider
 trait DataFrameDocument extends Serializable {
   def getSchemaURL(): Option[String]
 
+  def getDataFrameTitle(): Option[String]
+
   def getColumnURL(colName: String): Option[String]
 
   def getColumnAlias(colName: String): Option[String]

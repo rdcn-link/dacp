@@ -105,6 +105,8 @@ class DacpClient(host: String, port: Int, useTLS: Boolean = false) extends DftpC
     new DataFrameDocument {
       override def getSchemaURL(): Option[String] = Some("[SchemaURL defined by provider]")
 
+      override def getDataFrameTitle(): Option[String] = Some(jo.getString("title"))
+
       override def getColumnURL(colName: String): Option[String] = Some(jo.getString("url"))
 
       override def getColumnAlias(colName: String): Option[String] = Some(jo.getString("alias"))

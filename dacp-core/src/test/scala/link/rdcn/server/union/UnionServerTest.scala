@@ -60,6 +60,8 @@ object UnionServerTest {
       override def getDocument(dataFrameName: String): DataFrameDocument = new DataFrameDocument {
         override def getSchemaURL(): Option[String] = None
 
+        override def getDataFrameTitle(): Option[String] = None
+
         override def getColumnURL(colName: String): Option[String] = None
 
         override def getColumnAlias(colName: String): Option[String] = None
@@ -103,6 +105,8 @@ object UnionServerTest {
 
       override def getDocument(dataFrameName: String): DataFrameDocument = new DataFrameDocument {
         override def getSchemaURL(): Option[String] = None
+
+        override def getDataFrameTitle(): Option[String] = None
 
         override def getColumnURL(colName: String): Option[String] = None
 

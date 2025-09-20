@@ -218,9 +218,9 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
 
   private def getDataFrameDocumentJsonString(dataFrameName: String): String = {
     val document = dataProvider.getDocument(dataFrameName)
-    val schema = StructType.empty.add("url", StringType).add("alias", StringType).add("title", StringType)
+    val schema = StructType.empty.add("url", StringType).add("alias", StringType).add("title", StringType).add("dataFrameTitle", StringType)
     val stream = getSchema(dataFrameName).columns.map(col => col.name).map(name => Seq(document.getColumnURL(name).getOrElse("")
-        , document.getColumnAlias(name).getOrElse(""), document.getColumnTitle(name).getOrElse("")))
+        , document.getColumnAlias(name).getOrElse(""), document.getColumnTitle(name).getOrElse(""), document.getDataFrameTitle().getOrElse("")))
       .map(seq => link.rdcn.struct.Row.fromSeq(seq))
     val ja = new JSONArray()
     stream.map(_.toJsonObject(schema)).foreach(ja.put(_))
