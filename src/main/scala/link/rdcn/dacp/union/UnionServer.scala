@@ -20,7 +20,6 @@ import java.time.format.DateTimeFormatter
 import java.time.{ZoneId, ZonedDateTime}
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
-import scala.collection.JavaConverters.asJavaIterableConverter
 import scala.collection.mutable
 
 /**
@@ -36,7 +35,7 @@ class UnionServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPr
   private val endpointClientsMap = mutable.Map[String, DacpClient]()
   private val endpointMap = mutable.Map[String, Endpoint]()
 
-  private val authProviderWithKey = KeyAuthProvider(authProvider, getFardConfig())
+  private val authProviderWithKey = KeyAuthProvider(authProvider)
 
   private val formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
   private val recipeCounter = new AtomicLong(0L)
@@ -207,12 +206,7 @@ object UnionServer {
     UnionServer(endpoints)
   }
 
-  private val authProvider = new AuthProvider {
-
-    override def authenticate(credentials: Credentials): UserPrincipal = new UserPrincipal {}
-
-    override def checkPermission(user: UserPrincipal, dataFrameName: String, opList: List[DataOperationType]): Boolean = true
-  }
+  private val authProvider = new AllowAllAuthProvider
 
   private val dataProvider = new DataProvider {
     override def listDataSetNames(): util.List[String] = ???
@@ -245,6 +239,13 @@ case class Endpoint(
 
   def getDacpClient(credentials: Credentials): DacpClient = DacpClient.connect(url, credentials)
 
+}
+
+class AllowAllAuthProvider extends AuthProvider {
+
+  override def authenticate(credentials: Credentials): UserPrincipal = new UserPrincipal {}
+
+  override def checkPermission(user: UserPrincipal, dataFrameName: String, opList: List[DataOperationType]): Boolean = true
 }
 
 

@@ -19,9 +19,9 @@ import scala.collection.JavaConverters.asScalaBufferConverter
  */
 trait FlowExecutionContext extends ExecutionContext {
 
-  val pythonHome: String
-
   val fairdConfig: FairdConfig
+
+  def pythonHome: String
 
   def loadSourceDataFrame(dataFrameNameUrl: String): Option[DataFrame]
 

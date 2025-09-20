@@ -5,16 +5,16 @@ import link.rdcn.{DftpConfig, Logging}
 import link.rdcn.client.UrlValidator
 import link.rdcn.dacp.ConfigKeys.{FAIRD_HOST_DOMAIN, FAIRD_HOST_NAME, FAIRD_HOST_PORT, FAIRD_HOST_POSITION, FAIRD_HOST_TITLE, FAIRD_TLS_CERT_PATH, FAIRD_TLS_ENABLED, FAIRD_TLS_KEY_PATH, LOGGING_FILE_NAME, LOGGING_LEVEL_ROOT, LOGGING_PATTERN_CONSOLE, LOGGING_PATTERN_FILE}
 import link.rdcn.dacp.{ConfigKeys, FairdConfig}
-import link.rdcn.dacp.optree.{FlowExecutionContext, OperatorRepository, TransformTree}
+import link.rdcn.dacp.optree.{FlowExecutionContext, OperatorRepository, RepositoryClient, TransformTree}
 import link.rdcn.dacp.received.DataReceiver
-import link.rdcn.dacp.user.{AuthProvider, KeyAuthProvider, KeyUserPrincipal}
+import link.rdcn.dacp.user.{AuthProvider, KeyAuthProvider}
 import link.rdcn.operation.TransformOp
 import link.rdcn.provider.DataProvider
 import link.rdcn.server.{ActionRequest, ActionResponse, DftpMethodService, GetRequest, GetResponse, PutRequest, PutResponse}
 import link.rdcn.server.dftp.DftpServer
 import link.rdcn.struct.ValueType.{LongType, RefType, StringType}
 import link.rdcn.struct.{DFRef, DataFrame, DataStreamSource, DefaultDataFrame, Row, StructType}
-import link.rdcn.user.UserPrincipal
+import link.rdcn.user.{AuthenticationService, UserPrincipal}
 import link.rdcn.util.DataUtils
 import org.apache.jena.rdf.model.{Model, ModelFactory}
 import org.json.{JSONArray, JSONObject}
@@ -32,13 +32,36 @@ import scala.collection.JavaConverters.asScalaBufferConverter
  */
 class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authProvider: AuthProvider) extends Logging{
 
-  private val authProviderWithKey = KeyAuthProvider(authProvider, fairdConfig)
+  private var fairdConfig: FairdConfig = _
+  private val protocolSchema = "dacp"
+  private var baseUrl: String = _
 
-  private val server: DacpServerProducer = new DacpServerProducer
+  private val authProviderWithKey = KeyAuthProvider(authProvider)
+  private val dftpMethodService: DftpMethodService = new DftpMethodService {
+    override def doGet(request: GetRequest, response: GetResponse): Unit = DacpServer.this.doGet(request, response)
+
+    override def doPut(request: PutRequest, response: PutResponse): Unit = {
+      val dataFrame = request.getDataFrame()
+      try {
+        dataReceiver.start()
+        dataReceiver.receiveRow(dataFrame)
+        dataReceiver.finish()
+        dataReceiver.close()
+      } catch {
+        case e: Exception => response.sendError(500, e.getMessage)
+      }
+      response.sendMessage(new JSONObject().put("status","success").toString())
+    }
+
+    override def doAction(request: ActionRequest, response: ActionResponse): Unit =
+      response.sendError(501, s"${request.getActionName()} Not Implemented")
+  }
+  private val server: DacpServerProducer = new DacpServerProducer(authProviderWithKey, dftpMethodService)
 
   def start(dftpConfig: DftpConfig): Unit = {
     require(dftpConfig.isInstanceOf[FairdConfig])
     this.fairdConfig = dftpConfig.asInstanceOf[FairdConfig]
+    authProviderWithKey.setFairdConfig(fairdConfig)
     baseUrl = s"$protocolSchema://${fairdConfig.hostPosition}:${fairdConfig.hostPort}"
     server.start(dftpConfig)
   }
@@ -266,35 +289,14 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
 
   def getUrlPath(dataFrameUrl: String): String = {
     val urlValidator = UrlValidator(protocolSchema)
-    if(urlValidator.isPath(dataFrameUrl)) dataFrameUrl
-    else urlValidator.extractPath(dataFrameUrl) match {
+    urlValidator.extractPath(dataFrameUrl) match {
       case Right(path) => path
-      case Left(message) =>
-        throw new IllegalArgumentException(message)
+      case Left(message) => dataFrameUrl
     }
   }
 
-  private val dftpMethodService: DftpMethodService = new DftpMethodService {
-    override def doGet(request: GetRequest, response: GetResponse): Unit = DacpServer.this.doGet(request, response)
-
-    override def doPut(request: PutRequest, response: PutResponse): Unit = {
-      val dataFrame = request.getDataFrame()
-      try {
-        dataReceiver.start()
-        dataReceiver.receiveRow(dataFrame)
-        dataReceiver.finish()
-        dataReceiver.close()
-      } catch {
-        case e: Exception => response.sendError(500, e.getMessage)
-      }
-      response.sendMessage(new JSONObject().put("status","success").toString())
-    }
-
-    override def doAction(request: ActionRequest, response: ActionResponse): Unit =
-      response.sendError(501, s"${request.getActionName()} Not Implemented")
-  }
-
-  private class DacpServerProducer extends DftpServer(authProviderWithKey, dftpMethodService) {
+  private class DacpServerProducer(userAuthenticationService: AuthenticationService, dftpMethod: DftpMethodService) extends DftpServer(userAuthenticationService, dftpMethod) {
+    this.setProtocolSchema(protocolSchema)
     override def sendStream(userPrincipal: UserPrincipal, ticket: Array[Byte], response: GetResponse): Unit = {
       val dftpTicket = TicketWithCook.decodeTicket(ticket)
       dftpTicket match {
@@ -319,8 +321,11 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
   }
 
   private def ctx = new FlowExecutionContext {
-    override val pythonHome: String = ???
+
     override val fairdConfig: FairdConfig = fairdConfig
+
+    //TODO pythonHome from env
+    override def pythonHome: String = fairdConfig.pythonHome
 
     override def loadSourceDataFrame(dataFrameNameUrl: String): Option[DataFrame] = {
       val resourcePath = if(dataFrameNameUrl.startsWith(baseUrl)) dataFrameNameUrl.stripPrefix(baseUrl)
@@ -335,8 +340,8 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
           None
       }
     }
-
-    override def getRepositoryClient(): Option[OperatorRepository] = ???
+    //TODO Repository config
+    override def getRepositoryClient(): Option[OperatorRepository] = Some(new RepositoryClient("10.0.89.38", 8088))
   }
 
   private def loadProperties(path: String): Properties = {
@@ -345,8 +350,4 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
     try props.load(fis) finally fis.close()
     props
   }
-
-  private var fairdConfig: FairdConfig = _
-  private val protocolSchema = "dacp"
-  private var baseUrl: String = _
 }

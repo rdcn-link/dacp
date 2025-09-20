@@ -30,7 +30,11 @@ trait AuthProvider extends AuthenticationService{
                       opList: List[DataOperationType] = List.empty): Boolean
 }
 
-case class KeyAuthProvider(authProvider: AuthProvider, fairdConfig: FairdConfig) extends AuthProvider {
+case class KeyAuthProvider(authProvider: AuthProvider) extends AuthProvider {
+
+  var fairdConfig: FairdConfig = _
+
+  def setFairdConfig(fairdConfig: FairdConfig): Unit = this.fairdConfig = fairdConfig
 
   override def authenticate(credentials: Credentials): UserPrincipal = {
     credentials match {
