@@ -3,11 +3,11 @@ package link.rdcn.dacp.client
 import link.rdcn.client.{DftpClient, RemoteDataFrameProxy, UrlValidator}
 import link.rdcn.dacp.optree.{RepositoryOperator, TransformFunctionWrapper, TransformerNode}
 import link.rdcn.dacp.recipe.{ExecutionResult, Flow, FlowPath, RepositoryNode, SourceNode, Transformer11, Transformer21}
-import link.rdcn.operation.{DataFrameCall11, DataFrameCall21, FunctionWrapper, LangType, Operation, SerializableFunction, SourceOp}
+import link.rdcn.dacp.server.CookTicket
+import link.rdcn.operation.{DataFrameCall11, DataFrameCall21, FunctionWrapper, LangType, SerializableFunction, SourceOp, TransformOp}
 import link.rdcn.provider.{DataFrameDocument, DataFrameStatistics}
 import link.rdcn.struct.{ClosableIterator, DFRef, DataFrame, DefaultDataFrame, Row, StructType}
 import link.rdcn.user.Credentials
-import link.rdcn.util.CodecUtils
 import org.apache.arrow.flight.Ticket
 import org.apache.jena.rdf.model.{Model, ModelFactory}
 import org.json.{JSONArray, JSONObject}
@@ -41,8 +41,8 @@ class DacpClient(host: String, port: Int, useTLS: Boolean = false) extends DftpC
     model
   }
 
-  def getByOperation(operation: Operation): DataFrame = {
-    val schemaAndRow = getCookRows(operation.toJsonString)
+  def executeTransformTree(transformOp: TransformOp): DataFrame = {
+    val schemaAndRow = getCookRows(transformOp.toJsonString)
     DefaultDataFrame(schemaAndRow._1, schemaAndRow._2)
   }
 
@@ -66,7 +66,7 @@ class DacpClient(host: String, port: Int, useTLS: Boolean = false) extends DftpC
     }
   }
 
-  private def transformFlowToOperation(path: FlowPath): Operation = {
+  private def transformFlowToOperation(path: FlowPath): TransformOp = {
     path.node match {
       case f: Transformer11 =>
         val genericFunctionCall = DataFrameCall11(new SerializableFunction[DataFrame, DataFrame] {
@@ -93,8 +93,8 @@ class DacpClient(host: String, port: Int, useTLS: Boolean = false) extends DftpC
     }
   }
 
-  def getCookRows(operationNode: String): (StructType, ClosableIterator[Row]) = {
-    val schemaAndIter = getStream(flightClient, new Ticket(CodecUtils.encodeTicket(COOK_STREAM, operationNode)))
+  def getCookRows(transformOpStr: String): (StructType, ClosableIterator[Row]) = {
+    val schemaAndIter = getStream(flightClient, new Ticket(CookTicket(transformOpStr).encodeTicket()))
     val stream = schemaAndIter._2.map(seq => Row.fromSeq(seq))
     (schemaAndIter._1, ClosableIterator(stream)())
   }
@@ -170,8 +170,6 @@ class DacpClient(host: String, port: Int, useTLS: Boolean = false) extends DftpC
     }))
     result.toMap
   }
-
-  protected val COOK_STREAM: Byte = 3
 }
 
 object DacpClient {

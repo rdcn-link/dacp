@@ -4,12 +4,13 @@ import link.rdcn.client.UrlValidator
 import link.rdcn.dacp.client.DacpClient
 import link.rdcn.dacp.optree.RemoteSourceProxyOp
 import link.rdcn.dacp.received.DataReceiver
-import link.rdcn.dacp.server.{AllowAllAuthProvider, CookRequest, CookResponse, DacpServer, KeyBasedAuthUtils}
-import link.rdcn.dacp.user.{AuthProvider, SignatureAuth}
-import link.rdcn.operation.{Operation, SourceOp}
+import link.rdcn.dacp.server.{CookRequest, CookResponse, DacpServer, KeyBasedAuthUtils}
+import link.rdcn.dacp.user.{AuthProvider, DataOperationType, KeyAuthProvider, KeyCredentials}
+import link.rdcn.operation.{SourceOp, TransformOp}
 import link.rdcn.provider.{DataFrameDocument, DataFrameStatistics, DataProvider}
+import link.rdcn.server.{GetRequest, GetResponse}
 import link.rdcn.struct.{DFRef, DataFrame, DataStreamSource, DefaultDataFrame, Row}
-import link.rdcn.user.Credentials
+import link.rdcn.user.{Credentials, UserPrincipal}
 import link.rdcn.util.CodecUtils
 import org.apache.jena.rdf.model.Model
 import org.json.JSONObject
@@ -19,6 +20,7 @@ import java.time.format.DateTimeFormatter
 import java.time.{ZoneId, ZonedDateTime}
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
+import scala.collection.JavaConverters.asJavaIterableConverter
 import scala.collection.mutable
 
 /**
@@ -34,8 +36,10 @@ class UnionServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPr
   private val endpointClientsMap = mutable.Map[String, DacpClient]()
   private val endpointMap = mutable.Map[String, Endpoint]()
 
-  val formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
-  val recipeCounter = new AtomicLong(0L)
+  private val authProviderWithKey = KeyAuthProvider(authProvider, getFardConfig())
+
+  private val formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
+  private val recipeCounter = new AtomicLong(0L)
 
   def addEndpoint(endpoints: Endpoint*): Unit = {
     endpoints.foreach(endpoint => {
@@ -64,78 +68,79 @@ class UnionServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPr
   }
 
   override def doCook(request: CookRequest, response: CookResponse): Unit = {
-    val operationStr = request.getOperation
-    val authenticatedUser = request.getRequestAuthenticated()
-    val verifyResult = verifyOperationPermission(operationStr, authenticatedUser)
-    if(verifyResult._1){
-      val operation = verifyResult._2
-      operation match {
-        case s: SourceOp =>
-          val baseUrlAndPath: (String, String) = UrlValidator.extractBaseUrlAndPath(s.dataFrameUrl) match {
-            case Right((baseUrl, path)) => (baseUrl, path)
-            case Left(message) => (this.baseUrl, s.dataFrameUrl)
+    val transformTree = request.getTransformTree
+    val userPrincipal = request.getRequestUserPrincipal()
+
+    transformTree match
+    {
+      case s: SourceOp =>
+        val baseUrlAndPath: (String, String) = UrlValidator.extractBaseUrlAndPath(s.dataFrameUrl) match {
+          case Right((baseUrl, path)) => (baseUrl, path)
+          case Left(message) => (this.getBaseUrl(), s.dataFrameUrl)
+        }
+        if (baseUrlAndPath._1 == this.getBaseUrl())
+        {
+          baseUrlAndPath._2 match {
+            case "/listDataSets" => response.sendDataFrame(doListDataSets())
+            case "/listHostInfo" => response.sendDataFrame(doListHostInfo())
+            case "/listDataFrames" => response.sendDataFrame(doListDataFrames(s.dataFrameUrl))
+            case other => response.sendError(404, s"not found resource ${this.getBaseUrl()}${other}")
           }
-          if (baseUrlAndPath._1 == this.baseUrl) {
-            baseUrlAndPath._2 match {
-              case "/listDataSets" => response.sendDataFrame(doListDataSets())
-              case "/listHostInfo" => response.sendDataFrame(doListHostInfo())
-              case "/listDataFrames" => response.sendDataFrame(doListDataFrames(s.dataFrameUrl))
-              case other => response.sendError(404, s"not found resource ${baseUrl}${other}")
-            }
-          } else {
+        }else
+        {
+          if(authProviderWithKey.checkPermission(userPrincipal, baseUrlAndPath._2)){
             try {
               val client = endpointClientsMap.getOrElse(baseUrlAndPath._1
                 , throw new Exception(s"Access to FaridServer ${s.dataFrameUrl} is denied"))
-              response.sendDataFrame(client.getByOperation(operation))
+              response.sendDataFrame(client.executeTransformTree(transformTree))
             } catch {
               case e: Exception =>
                 logger.error(e)
                 response.sendError(500, e.getMessage)
             }
-          }
-        case other: Operation => response.sendDataFrame(createRecipe(other).execute())
-      }
-    }else{
-      response.sendError(403, s"access dataFrame ${verifyResult._3.get} forbidden")
+          }else response.sendError(403, s"access ${s.dataFrameUrl} forbidden")
+        }
+      case other: TransformOp =>
+        other.sourceUrlList.find(url => {
+          !authProviderWithKey.checkPermission(userPrincipal, getUrlPath(url))
+        })match {
+          case Some(url) => response.sendError(403, s"access ${url} forbidden")
+          case None => response.sendDataFrame(createRecipe(other).execute())
+        }
     }
-
   }
 
-  private def createSignature(expirationTime: Long): SignatureAuth = {
-    val privateKey = fairdConfig.privateKey
+  override def doGet(request: GetRequest, response: GetResponse): Unit = {
+    if(Seq("/listDataSets", "/listHostInfo", "/listDataFrames").contains(request.getRequestedPath())) super.doGet(request, response)
+    else response.sendError(404, s"not found resource ${this.getBaseUrl()}${request.getRequestedPath()}")
+  }
+
+  private def createSignature(expirationTime: Long): KeyCredentials = {
+    val privateKey = getFardConfig().privateKey
     if (privateKey.isEmpty) throw new Exception("Private key not found. Please configure private key information for this UnionServer.")
     else {
       val nonce = UUID.randomUUID().toString
       val issueTime = System.currentTimeMillis()
-      val jo = new JSONObject().put("serverId", this.baseUrl)
+      val jo = new JSONObject().put("serverId", this.getBaseUrl())
         .put("nonce", nonce)
         .put("issueTime", issueTime)
         .put("validTo", issueTime + expirationTime)
 
       val signature = KeyBasedAuthUtils.signData(privateKey.get, CodecUtils.encodeString(jo.toString))
-      SignatureAuth(this.baseUrl, nonce, issueTime, issueTime + expirationTime, signature)
+      KeyCredentials(this.getBaseUrl(), nonce, issueTime, issueTime + expirationTime, signature)
     }
   }
 
-  private def getOperationSource(operations: Seq[Operation]): Seq[Operation] = {
-    operations.map(operation => {
-      operation match {
-        case s: SourceOp => Seq(s)
-        case other: Operation => getOperationSource(other.inputs)
-      }
-    }).flatten
-  }
-
-  private def rebuildOperation(operation: Operation, baseUrl: String): Operation = {
-    val inputs = operation.inputs.map(operation => operation match {
+  private def rebuildOperation(transformOp: TransformOp, baseUrl: String): TransformOp = {
+    val inputs = transformOp.inputs.map(operation => operation match {
       case s: SourceOp =>
         if (s.dataFrameUrl.startsWith(baseUrl)) s else {
           val certificate = createSignature(60L * 60 * 1000) //default expirationTime 1h
           RemoteSourceProxyOp(s.dataFrameUrl, certificate.toJson().toString)
         }
-      case other: Operation => rebuildOperation(other, baseUrl)
+      case other: TransformOp => rebuildOperation(other, baseUrl)
     })
-    operation.setInputs(inputs: _*)
+    transformOp.setInputs(inputs: _*)
   }
 
   private def getRecipeId(): String = {
@@ -146,14 +151,15 @@ class UnionServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPr
 
   private case class Recipe(
                              jobId: String,
-                             operation: Operation,
+                             transformOp: TransformOp,
                              executionNodeBaseUrl: String,
                              attributes: Map[String, String] = Map()
-                           ) {
+                           )
+  {
     def execute(): DataFrame = {
       val client = endpointClientsMap.getOrElse(executionNodeBaseUrl
         , throw new Exception(s"Access to FaridServer ${executionNodeBaseUrl} is denied"))
-      client.getByOperation(operation)
+      client.executeTransformTree(transformOp)
     }
 
     //TODO kill Job
@@ -162,17 +168,17 @@ class UnionServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPr
 
   //  TODO 根据计算资源判定执行节点
   //可强制指定执行节点
-  private def createRecipe(operation: Operation, executionNodeBaseUrl: Option[String] = None): Recipe = {
+  private def createRecipe(transformOp: TransformOp, executionNodeBaseUrl: Option[String] = None): Recipe = {
     if (executionNodeBaseUrl.isEmpty) {
-      val baseUrl = getOperationSource(Seq(operation)).map(_.asInstanceOf[SourceOp].dataFrameUrl)
+      val baseUrl = transformOp.sourceUrlList.toList
         .map(UrlValidator.extractBase(_).get._1)
         .groupBy(identity)
         .mapValues(_.size)
         .maxBy(_._2)._1
-      val reOperation = rebuildOperation(operation, baseUrl)
+      val reOperation = rebuildOperation(transformOp, baseUrl)
       Recipe(getRecipeId(), reOperation, baseUrl)
     } else {
-      Recipe(getRecipeId(), rebuildOperation(operation, executionNodeBaseUrl.get), executionNodeBaseUrl.get)
+      Recipe(getRecipeId(), rebuildOperation(transformOp, executionNodeBaseUrl.get), executionNodeBaseUrl.get)
     }
   }
 
@@ -201,7 +207,12 @@ object UnionServer {
     UnionServer(endpoints)
   }
 
-  private val authProvider = new AllowAllAuthProvider
+  private val authProvider = new AuthProvider {
+
+    override def authenticate(credentials: Credentials): UserPrincipal = new UserPrincipal {}
+
+    override def checkPermission(user: UserPrincipal, dataFrameName: String, opList: List[DataOperationType]): Boolean = true
+  }
 
   private val dataProvider = new DataProvider {
     override def listDataSetNames(): util.List[String] = ???

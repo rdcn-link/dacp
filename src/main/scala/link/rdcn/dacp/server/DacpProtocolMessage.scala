@@ -1,7 +1,8 @@
 package link.rdcn.dacp.server
 
+import link.rdcn.operation.TransformOp
 import link.rdcn.struct.DataFrame
-import link.rdcn.user.AuthenticatedUser
+import link.rdcn.user.UserPrincipal
 
 /**
  * @Author renhao
@@ -10,9 +11,9 @@ import link.rdcn.user.AuthenticatedUser
  * @Modified By:
  */
 trait CookRequest {
-  def getOperation: String
+  def getTransformTree: TransformOp
 
-  def getRequestAuthenticated(): AuthenticatedUser
+  def getRequestUserPrincipal(): UserPrincipal
 }
 
 trait CookResponse {
