@@ -47,7 +47,7 @@ case class Flow(
     val allTargets = reverseEdges.values.flatten.toSet
     val allSources = reverseEdges.keySet
     val rootNodes = allSources.diff(allTargets)
-
+    if(rootNodes.isEmpty) throw new IllegalArgumentException(s"Cycle detected")
     def buildPath(current: String, visited: Set[String]): FlowPath = {
       if (visited.contains(current)) {
         throw new IllegalArgumentException(s"Cycle detected: node '$current' is revisited")

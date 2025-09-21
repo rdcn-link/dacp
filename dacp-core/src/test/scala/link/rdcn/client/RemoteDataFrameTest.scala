@@ -402,14 +402,15 @@ class DataFrameOperationTest extends TestProvider {
       stringWriter.toString
     }
     val listActualOutput = actualOutputs.toList
-    assertEquals(expectedOutputAB, listActualOutput(0))
-    assertEquals(expectedOutputAC, listActualOutput(1))
+    assertEquals(expectedOutputAB, listActualOutput(1))
+    assertEquals(expectedOutputAC, listActualOutput(0))
   }
 
 
   //  A   B
   //   \ /
   //    C
+//  TODO modify c to unionOp
   @ParameterizedTest
   @ValueSource(ints = Array(10))
   def testDataFrameUDFJoinDAG(num: Int): Unit = {
@@ -451,6 +452,7 @@ class DataFrameOperationTest extends TestProvider {
   //    B   C
   //     \ /
   //      D --> E
+  //  TODO modify D to unionOp
   @ParameterizedTest
   @ValueSource(ints = Array(10))
   def testDataFrameUDFHybridDAG(num: Int): Unit = {

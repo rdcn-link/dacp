@@ -121,19 +121,13 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
         }
       }
       case otherPath =>
-        try {
-          val userPrincipal = request.getRequestUserPrincipal()
-          if(authProvider.checkPermission(userPrincipal, otherPath)){
-            val dataStreamSource: DataStreamSource = dataProvider.getDataStreamSource(otherPath)
-            val dataFrame: DataFrame = DefaultDataFrame(dataStreamSource.schema, dataStreamSource.iterator)
-            response.sendDataFrame(dataFrame)
-          }else{
-            response.sendError(403, s"access dataFrame $otherPath Forbidden")
-          }
-        } catch {
-          case e: Exception =>
-            logger.error(s"Error while get resource $otherPath", e)
-            response.sendError(500, e.getMessage)
+        val userPrincipal = request.getRequestUserPrincipal()
+        if(authProvider.checkPermission(userPrincipal, otherPath)){
+          val dataStreamSource: DataStreamSource = dataProvider.getDataStreamSource(otherPath)
+          val dataFrame: DataFrame = DefaultDataFrame(dataStreamSource.schema, dataStreamSource.iterator)
+          response.sendDataFrame(dataFrame)
+        }else{
+          response.sendError(403, s"access dataFrame $otherPath Forbidden")
         }
     }
   }

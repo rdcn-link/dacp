@@ -11,10 +11,12 @@ class ResourceUnavailableTest extends TestProvider {
   //df不存在
   @Test
   def testAccessInvalidDataFrame(): Unit = {
-    val df = dc.getByPath("/csv/invalid.csv") // 假设没有该文件
     val serverException = assertThrows(
       classOf[FlightRuntimeException],
-      () => df.foreach(_ => {})
+      {
+        val df = dc.getByPath("/csv/invalid_not.csv") // 假设没有该文件
+        () => df.foreach(_ => {})
+      }
     )
     assertEquals(CallStatus.UNAUTHORIZED, serverException.status())
   }
