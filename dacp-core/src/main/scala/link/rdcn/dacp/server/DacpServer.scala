@@ -3,7 +3,7 @@ package link.rdcn.dacp.server
 import com.sun.management.OperatingSystemMXBean
 import link.rdcn.DftpConfig
 import link.rdcn.client.UrlValidator
-import link.rdcn.dacp.ConfigKeys.{FAIRD_HOST_DOMAIN, FAIRD_HOST_NAME, FAIRD_HOST_PORT, FAIRD_HOST_POSITION, FAIRD_HOST_TITLE, FAIRD_TLS_CERT_PATH, FAIRD_TLS_ENABLED, FAIRD_TLS_KEY_PATH, LOGGING_FILE_NAME, LOGGING_LEVEL_ROOT, LOGGING_PATTERN_CONSOLE, LOGGING_PATTERN_FILE}
+import link.rdcn.dacp.ConfigKeys.{FAIRD_HOME, FAIRD_HOST_DOMAIN, FAIRD_HOST_NAME, FAIRD_HOST_PORT, FAIRD_HOST_POSITION, FAIRD_HOST_TITLE, FAIRD_TLS_CERT_PATH, FAIRD_TLS_ENABLED, FAIRD_TLS_KEY_PATH, LOGGING_FILE_NAME, LOGGING_LEVEL_ROOT, LOGGING_PATTERN_CONSOLE, LOGGING_PATTERN_FILE}
 import link.rdcn.dacp.{ConfigKeys, FairdConfig}
 import link.rdcn.dacp.optree.{FlowExecutionContext, OperatorRepository, RepositoryClient, TransformTree}
 import link.rdcn.dacp.received.DataReceiver
@@ -19,6 +19,9 @@ import link.rdcn.user.{AuthenticationService, UserPrincipal}
 import link.rdcn.util.DataUtils
 import org.apache.jena.rdf.model.{Model, ModelFactory}
 import org.json.{JSONArray, JSONObject}
+import org.springframework.beans.factory.xml.{XmlBeanDefinitionReader, XmlBeanFactory}
+import org.springframework.context.support.GenericApplicationContext
+import org.springframework.core.io.ClassPathResource
 
 import java.io.{File, FileInputStream, InputStreamReader, StringWriter}
 import java.lang.management.ManagementFactory
@@ -34,7 +37,7 @@ import scala.collection.JavaConverters.asScalaBufferConverter
 class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authProvider: AuthProvider) extends Logging{
 
   private var fairdConfig: FairdConfig = _
-  private val protocolSchema = "dacp"
+  private val protocolScheme = "dacp"
   private var baseUrl: String = _
 
   private val authProviderWithKey = KeyAuthProvider(authProvider)
@@ -44,10 +47,7 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
     override def doPut(request: PutRequest, response: PutResponse): Unit = {
       val dataFrame = request.getDataFrame()
       try {
-        dataReceiver.start()
-        dataReceiver.receiveRow(dataFrame)
-        dataReceiver.finish()
-        dataReceiver.close()
+        dataReceiver.receive(dataFrame)
       } catch {
         case e: Exception => response.sendError(500, e.getMessage)
       }
@@ -63,15 +63,8 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
     require(dftpConfig.isInstanceOf[FairdConfig])
     this.fairdConfig = dftpConfig.asInstanceOf[FairdConfig]
     authProviderWithKey.setFairdConfig(fairdConfig)
-    baseUrl = s"$protocolSchema://${fairdConfig.hostPosition}:${fairdConfig.hostPort}"
+    baseUrl = s"$protocolScheme://${fairdConfig.hostPosition}:${fairdConfig.hostPort}"
     server.start(dftpConfig)
-  }
-
-  def start(fairdHome: String): Unit = {
-    val props = loadProperties(s"$fairdHome" + File.separator + "conf" + File.separator + "faird.conf")
-    props.setProperty(ConfigKeys.FAIRD_HOME, fairdHome)
-    fairdConfig = FairdConfig.load(props)
-    start(fairdConfig)
   }
 
   def close(): Unit = server.close()
@@ -181,9 +174,9 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
     DefaultDataFrame(schema, stream)
   }
 
-  def getProtocolSchema(): String = protocolSchema
+  def getProtocolScheme(): String = protocolScheme
 
-  def getFardConfig(): FairdConfig = fairdConfig
+  def getFairdConfig(): FairdConfig = fairdConfig
 
   def getBaseUrl(): String = baseUrl
 
@@ -283,7 +276,7 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
   }
 
   def getUrlPath(dataFrameUrl: String): String = {
-    val urlValidator = UrlValidator(protocolSchema)
+    val urlValidator = UrlValidator(protocolScheme)
     urlValidator.extractPath(dataFrameUrl) match {
       case Right(path) => path
       case Left(message) => dataFrameUrl
@@ -291,7 +284,7 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
   }
 
   private class DacpServerProducer(userAuthenticationService: AuthenticationService, dftpMethod: DftpMethodService) extends DftpServer(userAuthenticationService, dftpMethod) {
-    this.setProtocolSchema(protocolSchema)
+    this.setProtocolSchema(protocolScheme)
     override def sendStream(userPrincipal: UserPrincipal, ticket: Array[Byte], response: GetResponse): Unit = {
       val dftpTicket = TicketWithCook.decodeTicket(ticket)
       dftpTicket match {
@@ -337,6 +330,30 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
     }
     //TODO Repository config
     override def getRepositoryClient(): Option[OperatorRepository] = Some(new RepositoryClient("10.0.89.38", 8088))
+  }
+}
+
+object DacpServer {
+  var server: DacpServer = _
+
+  def start(fairdHome: String): Unit = {
+    val context: GenericApplicationContext = new GenericApplicationContext();
+    val reader: XmlBeanDefinitionReader = new XmlBeanDefinitionReader(context);
+    reader.loadBeanDefinitions(new ClassPathResource(s"$fairdHome" + File.separator + "conf" + File.separator + "faird.xml"));
+    context.refresh();
+    val dataReceiver = context.getBean("dataReceiver").asInstanceOf[DataReceiver]
+    val dataProvider = context.getBean("dataProvider").asInstanceOf[DataProvider]
+    val authProvider = context.getBean("authProvider").asInstanceOf[AuthProvider]
+
+    val server: DacpServer = new DacpServer(dataProvider, dataReceiver, authProvider)
+    val props = loadProperties(s"$fairdHome" + File.separator + "conf" + File.separator + "faird.conf")
+    props.setProperty(ConfigKeys.FAIRD_HOME, fairdHome)
+    val fairdConfig = FairdConfig.load(props)
+    server.start(fairdConfig)
+  }
+
+  def close(): Unit = {
+    server.close()
   }
 
   private def loadProperties(path: String): Properties = {

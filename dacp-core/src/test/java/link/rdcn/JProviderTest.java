@@ -208,24 +208,10 @@ public class JProviderTest {
         };
 
         DataReceiver dataReceiver = new DataReceiver() {
-            @Override
-            public void start() {
-
-            }
 
             @Override
-            public void receiveRow(DataFrame dataFrame) {
+            public void receive(DataFrame dataFrame) {
 
-            }
-
-            @Override
-            public void finish() {
-
-            }
-
-            @Override
-            public void close() {
-                DataReceiver.super.close();
             }
         };
 

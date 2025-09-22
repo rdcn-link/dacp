@@ -115,7 +115,7 @@ class UnionServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPr
   }
 
   private def createSignature(expirationTime: Long): KeyCredentials = {
-    val privateKey = getFardConfig().privateKey
+    val privateKey = getFairdConfig().privateKey
     if (privateKey.isEmpty) throw new Exception("Private key not found. Please configure private key information for this UnionServer.")
     else {
       val nonce = UUID.randomUUID().toString
@@ -222,11 +222,7 @@ object UnionServer {
     override def getStatistics(dataFrameName: String): DataFrameStatistics = ???
   }
   private val dataReceiver = new DataReceiver {
-    override def start(): Unit = ???
-
-    override def receiveRow(dataFrame: DataFrame): Unit = ???
-
-    override def finish(): Unit = ???
+    override def receive(dataFrame: DataFrame): Unit = ???
   }
 }
 
