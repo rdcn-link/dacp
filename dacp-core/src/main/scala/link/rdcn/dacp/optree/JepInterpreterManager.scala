@@ -1,7 +1,7 @@
 package link.rdcn.dacp.optree
 
 import jep._
-import link.rdcn.Logging
+import link.rdcn.log.Logging
 
 import java.nio.file.{Files, Paths}
 import scala.sys.process._
