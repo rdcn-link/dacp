@@ -46,7 +46,7 @@ case class Flow(
       .map { case (k, v) => k -> v.map(_._2) }
     val allTargets = reverseEdges.values.flatten.toSet
     val allSources = reverseEdges.keySet
-    val rootNodes = allSources.diff(allTargets)
+    val rootNodes = if (allSources.nonEmpty) allSources.diff(allTargets) else nodes.keySet
     if(rootNodes.isEmpty) throw new IllegalArgumentException(s"Cycle detected")
     def buildPath(current: String, visited: Set[String]): FlowPath = {
       if (visited.contains(current)) {
@@ -66,7 +66,7 @@ case class Flow(
     val allTargets = edges.values.flatten.toSet
     val allSources = edges.keySet
     val rootNodes = allSources.diff(allTargets) // 没有被其他节点指向的起始节点
-    if (rootNodes.isEmpty) throw new IllegalArgumentException("Invalid DAG: no root nodes found, graph might contain cycles or be empty")
+    if (rootNodes.isEmpty && allSources.nonEmpty) throw new IllegalArgumentException("Invalid DAG: no root nodes found, graph might contain cycles or be empty")
     rootNodes.foreach(rootKey => nodes.get(rootKey) match {
       case Some(_: SourceNode) => // 合法，继续
       case Some(other) => throw new IllegalArgumentException(s"Invalid DAG: root node '$other' is not of type SourceOp, but ${other.getClass.getSimpleName}.")

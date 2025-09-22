@@ -29,7 +29,7 @@ object ServerDemo {
      * val server = new FairdServer(provider.dataProvider, provider.authProvider, Paths.get(getResourcePath("")).toString())
      * tls加密连接
      */
-    val server:DacpServer = new DacpServer(provider.dataProvider,new DataReceiver {
+    val server = new DacpServer(provider.dataProvider,new DataReceiver {
       /** Called once before receiving any rows */
       override def start(): Unit = {}
 
@@ -38,7 +38,8 @@ object ServerDemo {
 
       /** Called after all batches are received successfully */
       override def finish(): Unit = {}
-    }, provider.authProvider).setTLS(tlsCertFile, tlsKeyFile).asInstanceOf[DacpServer].setServiceHandler().asInstanceOf[DacpServer]
+    }, provider.authProvider)
+    server.enableTLS(tlsCertFile, tlsKeyFile)
     server.start(fairdHome)
   }
 }

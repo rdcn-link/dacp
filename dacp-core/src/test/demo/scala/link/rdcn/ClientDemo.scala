@@ -1,6 +1,6 @@
 package link.rdcn
 
-import link.rdcn.TestBase.getResourcePath
+import link.rdcn.TestBase.{getResourcePath, testClassesDir}
 import link.rdcn.dacp.client.DacpClient
 import link.rdcn.dacp.recipe.{ExecutionResult, Flow, FlowNode}
 import link.rdcn.dacp.{ConfigKeys, ResourceKeys}
@@ -83,10 +83,6 @@ object ClientDemo {
      * 用户可以控制没有信息时输出的字段
      */
         println("--------------打印数据帧Document--------------")
-        val result = mutable.Map[String, (Long, String, String, String, DFRef)]()
-        dc.get("dacp://localhost:3101/listDataFrames/json").mapIterator(iter => iter.foreach(row => {
-          result.put(row.getAs[String](0), (row.getAs[Long](1), row.getAs[String](2), row.getAs[String](3), row.getAs[String](4), row.getAs[DFRef](5)))
-        }))
         val dataFrameDocument: DataFrameDocument = dc.getDocument("/bin")
         val schemaURL: String = dataFrameDocument.getSchemaURL().getOrElse("schemaURL not found")
         val columnURL: String = dataFrameDocument.getColumnURL("file_name").getOrElse("columnURL not found")
@@ -117,7 +113,7 @@ object ClientDemo {
       val byteSize: Long = row.getAs[Long](3)
       //除此之外列值支持的类型还包括：Integer, Long, Float, Double, Boolean, byte[]
       //offerStream用于接受一个用户编写的处理blob InputStream的函数并确保其关闭
-      val path: Path = Paths.get("faird-core", "src", "test", "demo", "data", "output", name)
+      val path: Path = Paths.get(testClassesDir.getParentFile.getParentFile.getAbsolutePath, "src", "test", "demo", "data", "output", name)
       blob.offerStream(inputStream => {
         val outputStream = new FileOutputStream(path.toFile)
         IOUtils.copy(inputStream, outputStream)

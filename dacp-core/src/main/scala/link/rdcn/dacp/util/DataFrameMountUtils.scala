@@ -1,6 +1,6 @@
 package link.rdcn.dacp.util
 
-import link.rdcn.Logging
+import link.rdcn.log.Logging
 import link.rdcn.dacp.optree.fuse.{RowBatchFS, RowBatchFSSource}
 import link.rdcn.struct.DefaultDataFrame
 

@@ -39,15 +39,16 @@ object TestBase {
 
   //生成Token
   val genToken = () => UUID.randomUUID().toString
-
-  val demoBaseDir = Paths.get("/faird-core", "src", "test", "demo").toString
+  val resourceUrl = getClass.getProtectionDomain.getCodeSource.getLocation
+  val testClassesDir = new File(resourceUrl.toURI)
+  val demoBaseDir = Paths.get( "src", "test", "demo").toString
 
   def genModel: Model = {
     ModelFactory.createDefaultModel()
   }
 
   def getOutputDir(subDirs: String*): String = {
-    val outDir = Paths.get(System.getProperty("user.dir"), subDirs: _*) // 项目根路径
+    val outDir = Paths.get(testClassesDir.getParentFile.getParentFile.getAbsolutePath, subDirs: _*) // 项目根路径
     Files.createDirectories(outDir)
     outDir.toString
   }

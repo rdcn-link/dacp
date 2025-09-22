@@ -100,8 +100,8 @@ class DacpClient(host: String, port: Int, useTLS: Boolean = false) extends DftpC
   }
 
   def getDocument(dataFrameName: String): DataFrameDocument = {
-    val jo = new JSONArray(getDataFrameInfoMap.get(dataFrameName).map(_._3).getOrElse(None)).getJSONObject(0)
-
+    val jsonString: String = getDataFrameInfoMap.get(dataFrameName).map(_._2).getOrElse("[]")
+    val jo = new JSONArray(jsonString).getJSONObject(0)
     new DataFrameDocument {
       override def getSchemaURL(): Option[String] = Some("[SchemaURL defined by provider]")
 
