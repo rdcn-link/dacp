@@ -5,7 +5,6 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.stream.scaladsl.{FileIO, Source}
 import akka.util.ByteString
-import link.rdcn.operation.LangType
 import link.rdcn.struct.DataFrame
 import org.json.JSONObject
 
@@ -38,13 +37,13 @@ class RepositoryClient(host: String = "localhost", port: Int = 8088) extends Ope
     val filePath = Paths.get(operatorDir, fileName).toString()
     val functionName = info.get("functionName").toString
     info.get("type") match {
-      case LangType.JAVA_JAR.name =>
+      case LangTypeV2.JAVA_JAR.name =>
         val op = JavaJar(filePath, functionName)
         op.applyToDataFrames(inputs, ctx)
-      case LangType.CPP_BIN.name =>
+      case LangTypeV2.CPP_BIN.name =>
         val op = CppBin(filePath)
         op.applyToDataFrames(inputs, ctx)
-      case LangType.PYTHON_BIN.name =>
+      case LangTypeV2.PYTHON_BIN.name =>
         val op = PythonBin(functionName,filePath)
         op.applyToDataFrames(inputs, ctx)
       case _ => throw new IllegalArgumentException(s"Unsupported operator type: ${info.get("type")}")

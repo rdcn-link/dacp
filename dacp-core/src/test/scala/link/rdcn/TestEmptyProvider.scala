@@ -1,7 +1,7 @@
 package link.rdcn
 
 import link.rdcn.TestBase.{getOutputDir, getResourcePath}
-import link.rdcn.dacp.received.DataReceiver
+import link.rdcn.dacp.receiver.DataReceiver
 import link.rdcn.dacp.user.{AuthProvider, DataOperationType}
 import link.rdcn.user.{UserPrincipal, Credentials}
 import link.rdcn.struct.{DataFrame, DataStreamSource}

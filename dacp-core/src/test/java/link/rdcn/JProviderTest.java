@@ -1,7 +1,7 @@
 package link.rdcn;
 
 import link.rdcn.provider.*;
-import link.rdcn.dacp.received.DataReceiver;
+import link.rdcn.dacp.receiver.DataReceiver;
 import link.rdcn.dacp.server.DacpServer;
 import link.rdcn.struct.*;
 import link.rdcn.dacp.user.AuthProvider;
@@ -161,7 +161,7 @@ public class JProviderTest {
             public DataStreamSource getDataStreamSource(String dataFrameName) {
                 DirectorySource directorySource = new DirectorySource(false);
                 DataFrameInfo dataFrameInfo = getDataFrameInfo(dataFrameName).getOrElse(null);
-                return DataStreamSourceFactory.createFileListDataStreamSource(new File(dataFrameInfo.path()), false);
+                return DataStreamSource.filePath(new File(dataFrameInfo.path()), false);
             }
 
             /**

@@ -1,4 +1,4 @@
-package link.rdcn.dacp.received
+package link.rdcn.dacp.receiver
 
 import link.rdcn.struct.{DataFrame, StructType}
 
