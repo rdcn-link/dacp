@@ -310,10 +310,10 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
 
   private def ctx = new FlowExecutionContext {
 
-    override val fairdConfig: FairdConfig = fairdConfig
+    override val fairdConfig: FairdConfig = getFairdConfig()
 
     //TODO pythonHome from env
-    override def pythonHome: String = fairdConfig.pythonHome
+    override def pythonHome: String = this.fairdConfig.pythonHome
 
     override def loadSourceDataFrame(dataFrameNameUrl: String): Option[DataFrame] = {
       val resourcePath = if(dataFrameNameUrl.startsWith(baseUrl)) dataFrameNameUrl.stripPrefix(baseUrl)

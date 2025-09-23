@@ -7,6 +7,7 @@ import link.rdcn.dacp.FairdConfig
 import link.rdcn.dacp.client.DacpClient.protocolSchema
 import link.rdcn.dacp.optree.{CppBin, FlowExecutionContext, JavaJar, JepInterpreterManager, OperatorRepository, PythonBin, RepositoryClient}
 import link.rdcn.dacp.util.DataFrameMountUtils.mountDataFrameToTempPath
+import link.rdcn.log.LoggerFactory
 import link.rdcn.operation.{FunctionWrapper, LangType, SharedInterpreterManager}
 import link.rdcn.struct.ValueType.IntType
 import link.rdcn.struct._
@@ -27,17 +28,20 @@ class FunctionWrapperTest {
   val rows = Seq(Row.fromSeq(Seq(1, 2))).iterator
   val dataFrame = DefaultDataFrame(StructType.empty.add("col_1", ValueType.IntType).add("col_2", ValueType.IntType), ClosableIterator(rows)())
   val dataFrames = Seq(dataFrame)
+  ConfigLoader.init(getResourcePath(""))
+  LoggerFactory.setDftpConfig(ConfigLoader.fairdConfig)
+
+
 
   @Test
   def pythonBinTest(): Unit = {
-    ConfigLoader.init(getResourcePath(""))
     val whlPath = Paths.get(ConfigLoader.fairdConfig.fairdHome, "lib", "link-0.1-py3-none-any.whl").toString
-    val jo = new JSONObject()
-    jo.put("type", LangType.PYTHON_BIN.name)
-    jo.put("functionID", "aaa.bbb.id1")
-    jo.put("functionName", "normalize")
-    jo.put("whlPath", whlPath)
-    val pythonBin = FunctionWrapper(jo).asInstanceOf[PythonBin]
+    //    val jo = new JSONObject()
+//    jo.put("type", LangType.PYTHON_BIN.name)
+//    jo.put("functionID", "aaa.bbb.id1")
+//    jo.put("functionName", "normalize")
+//    jo.put("whlPath", whlPath)
+    val pythonBin = PythonBin("normalize",whlPath)
     val newRow = pythonBin.applyToDataFrames(dataFrames, ctx).asInstanceOf[Iterator[Row]].next()
     assert(newRow._1 == 0.33)
     assert(newRow._2 == 0.67)
@@ -45,12 +49,7 @@ class FunctionWrapperTest {
 
   @Test
   def javaJarTest(): Unit = {
-    ConfigLoader.init(getResourcePath(""))
-    val jo = new JSONObject()
-    jo.put("type", LangType.JAVA_JAR.name)
-    jo.put("functionID", "aaa.bbb.id2")
-    jo.put("fileName", "faird-plugin-impl-1.0-20250707.jar")
-    val javaJar = FunctionWrapper(jo).asInstanceOf[JavaJar]
+    val javaJar = JavaJar(Paths.get(ctx.fairdConfig.fairdHome, "faird-plugin-impl-0.5.0-20250920.jar").toString(),"Transformer11")
     val newDataFrame = javaJar.applyToInput(dataFrames, ctx).asInstanceOf[DataFrame]
     newDataFrame.foreach(row => {
       assert(row._1 == 1)
@@ -61,12 +60,8 @@ class FunctionWrapperTest {
 
   @Test
   def cppBinTest(): Unit = {
-    ConfigLoader.init(getResourcePath(""))
     val cppPath = Paths.get(ConfigLoader.fairdConfig.fairdHome, "lib", "cpp", "cpp_processor.exe").toString
-    val jo = new JSONObject()
-    jo.put("type", LangType.CPP_BIN.name)
-    jo.put("functionID", "cpp_processor.exe")
-    val cppBin = FunctionWrapper(jo).asInstanceOf[CppBin]
+    val cppBin = CppBin(cppPath)
     val newDf = cppBin.applyToInput(dataFrames, ctx).asInstanceOf[DataFrame]
     newDf.foreach(row => {
       assert(row._1 == true)
@@ -147,9 +142,9 @@ class FunctionWrapperTest {
   }
 
   def ctx = new FlowExecutionContext {
-    var baseUrl: String = s"$protocolSchema://${fairdConfig.hostPosition}:${fairdConfig.hostPort}"
+    override val fairdConfig: FairdConfig = ConfigLoader.fairdConfig
     override val pythonHome: String = fairdConfig.pythonHome
-    override val fairdConfig: FairdConfig = fairdConfig
+    var baseUrl: String = s"$protocolSchema://${fairdConfig.hostPosition}:${fairdConfig.hostPort}"
 
     override def loadSourceDataFrame(dataFrameNameUrl: String): Option[DataFrame] = {
       val resourcePath = if (dataFrameNameUrl.startsWith(baseUrl)) dataFrameNameUrl.stripPrefix(baseUrl)

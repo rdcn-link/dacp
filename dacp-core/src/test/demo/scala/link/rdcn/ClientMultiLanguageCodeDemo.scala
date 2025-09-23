@@ -39,7 +39,7 @@ object ClientMultiLanguageCodeDemo {
     javaDAGDfs.map().foreach { case (_, df) => df.limit(3).foreach(row => println(row)) }
 
     // 使用算子库指定id的算子对数据帧进行操作
-    val repositoryOperator = FlowNode.stocked("aaa.bbb.id4")
+    val repositoryOperator = FlowNode.stocked("aaa.bbb.id2")
     val transformerDAGRepositoryOperator: Flow = Flow.pipe(sourceNode, repositoryOperator)
     val RepositoryOperatorDAGDfs: ExecutionResult = dc.execute(transformerDAGRepositoryOperator)
     println("--------------打印通过算子库指定id的算子操作的数据帧--------------")

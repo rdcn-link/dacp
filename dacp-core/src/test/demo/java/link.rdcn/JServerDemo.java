@@ -15,24 +15,11 @@ public class JServerDemo {
         TestDemoProvider provider = new TestDemoProvider();
         //根据fairdHome自动读取配置文件
         DacpServer server = new DacpServer(provider.dataProvider(), new DataReceiver() {
-            @Override
-            public void start() {
 
-            }
 
             @Override
-            public void receiveRow(DataFrame dataFrame) {
+            public void receive(DataFrame dataFrame) {
 
-            }
-
-            @Override
-            public void finish() {
-
-            }
-
-            @Override
-            public void close() {
-                DataReceiver.super.close();
             }
         },provider.authProvider());
         server.start(ConfigLoader.fairdConfig());

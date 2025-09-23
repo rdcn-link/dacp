@@ -34,7 +34,7 @@ class RepositoryClientTest {
   @Test
   def uploadPackageTest(): Unit = {
     val functionId = "aaa.bbb.id2"
-    val responseBody = operatorClient.uploadPackage(jarPath, functionId, "JAVA_JAR", "Java Application", "main")
+    val responseBody = operatorClient.uploadPackage(jarPath, functionId, "JAVA_JAR", "Java Application", "Transformer11")
     assertTrue(Await.result(responseBody, 30.seconds).contains("success"), "Upload failed")
   }
 
@@ -49,7 +49,7 @@ class RepositoryClientTest {
     assertEquals(jarName, jsonInfo.getString("packageName"))
     assertEquals("JAVA_JAR", jsonInfo.getString("type"))
     assertEquals("Java Application", jsonInfo.getString("desc"))
-    assertEquals("main", jsonInfo.getString("functionName"))
+    assertEquals("Transfomer11", jsonInfo.getString("functionName"))
   }
 
   @Test

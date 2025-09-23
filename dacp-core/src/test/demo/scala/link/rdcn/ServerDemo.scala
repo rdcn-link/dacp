@@ -6,7 +6,8 @@
  */
 package link.rdcn
 
-import link.rdcn.TestBase.getResourcePath
+import link.rdcn.TestBase._
+import link.rdcn.dacp.{ConfigKeys, FairdConfig}
 import link.rdcn.dacp.received.DataReceiver
 import link.rdcn.dacp.server.DacpServer
 import link.rdcn.struct.DataFrame
@@ -30,16 +31,12 @@ object ServerDemo {
      * tls加密连接
      */
     val server = new DacpServer(provider.dataProvider,new DataReceiver {
-      /** Called once before receiving any rows */
-      override def start(): Unit = {}
-
-      /** Called for each received batch of rows */
-      override def receiveRow(dataFrame: DataFrame): Unit = {}
-
-      /** Called after all batches are received successfully */
-      override def finish(): Unit = {}
+      override def receive(dataFrame: DataFrame): Unit = {}
     }, provider.authProvider)
     server.enableTLS(tlsCertFile, tlsKeyFile)
-    server.start(fairdHome)
+    val props = ConfigLoader.loadProperties(s"$fairdHome" + File.separator + "conf" + File.separator + "faird.conf")
+    props.setProperty(ConfigKeys.FAIRD_HOME, fairdHome)
+    val fairdConfig = FairdConfig.load(props)
+    server.start(fairdConfig)
   }
 }
