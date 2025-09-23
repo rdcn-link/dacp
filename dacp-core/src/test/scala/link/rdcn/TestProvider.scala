@@ -101,14 +101,9 @@ object TestProvider {
     }
   }
   val dataReceiver: DataReceiver = new DataReceiver {
-    /** Called once before receiving any rows */
-    override def start(): Unit = ???
 
-    /** Called for each received batch of rows */
-    override def receiveRow(dataFrame: DataFrame): Unit = ???
+    override def receive(dataFrame: DataFrame): Unit = ???
 
-    /** Called after all batches are received successfully */
-    override def finish(): Unit = ???
   }
 
   private var fairdServer: Option[DacpServer] = None
