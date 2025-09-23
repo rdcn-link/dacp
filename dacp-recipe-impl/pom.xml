@@ -7,10 +7,10 @@
         <version>0.5.0-20250920</version>
     </parent>
 
-    <artifactId>faird-plugin-impl</artifactId>
+    <artifactId>dacp-recipe-impl</artifactId>
     <packaging>jar</packaging>
 
-    <name>faird-plugin-impl</name>
+    <name>dacp-recipe-impl</name>
     <url>http://maven.apache.org</url>
 
     <properties>
