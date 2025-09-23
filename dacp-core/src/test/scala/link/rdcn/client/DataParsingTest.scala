@@ -5,8 +5,12 @@ import link.rdcn.TestProvider
 import link.rdcn.TestProvider.{csvDfInfos, dc}
 import link.rdcn.struct.StructType.binaryStructType
 import link.rdcn.struct.Blob
+import org.apache.commons.io.IOUtils
 import org.junit.jupiter.api.Assertions.{assertEquals, assertNotNull, assertTrue}
 import org.junit.jupiter.api.Test
+
+import java.io.FileOutputStream
+import java.nio.file.{Path, Paths}
 
 class DataParsingTest extends TestProvider {
 
@@ -67,6 +71,12 @@ class DataParsingTest extends TestProvider {
         val createdTime = row.getAs[Long](3)
         val modifiedTime = row.getAs[Long](4)
         val lastAccessTime = row.getAs[Long](5)
+        val blob = row.getAs[Blob](6)
+        val path: Path = Paths.get("src", "test", "demo", "data", "output", name)
+        blob.offerStream(inputStream => {
+          val outputStream = new FileOutputStream(path.toFile)
+          IOUtils.copy(inputStream, outputStream)
+        })
 
         assertTrue(name.nonEmpty, "name should not be empty")
         assertTrue(size >= 0, "byteSize should not be negative")
