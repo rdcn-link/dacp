@@ -33,46 +33,46 @@ object ClientDemo {
     // 匿名连接FairdClient
     //    val dcAnonymous: DacpClient = DacpClient.connect("dacp://localhost:3101", Credentials.ANONYMOUS());
 
-//    //获得所有的数据集名称
-//    println("--------------打印数据集列表--------------")
-//    val dataSetNames: Seq[String] = dc.listDataSetNames()
-//    dataSetNames.foreach(println)
-//
-//    //获得指定数据集的所有的数据帧名称
-//    println("--------------打印数据集 csv 所有数据帧名称--------------")
-//    val frameNames: Seq[String] = dc.listDataFrameNames("csv")
-//    frameNames.foreach(println)
-//
-//    //获得指定数据集的元数据信息
-//    println("--------------打印数据集 csv 的元数据信息--------------")
-//    val metaData: Model = dc.getDataSetMetaData("csv")
-//    metaData.write(System.out, "TURTLE")
-//
-//    //获得host基本信息
-//    println("--------------打印host基本信息--------------")
-//    val hostInfo: Map[String, String] = dc.getHostInfo
-//    println(hostInfo(ConfigKeys.FAIRD_HOST_NAME))
-//    println(hostInfo(ConfigKeys.FAIRD_HOST_TITLE))
-//    println(hostInfo(ConfigKeys.FAIRD_HOST_PORT))
-//    println(hostInfo(ConfigKeys.FAIRD_HOST_POSITION))
-//    println(hostInfo(ConfigKeys.FAIRD_HOST_DOMAIN))
-//    println(hostInfo(ConfigKeys.FAIRD_TLS_ENABLED))
-//    println(hostInfo(ConfigKeys.FAIRD_TLS_CERT_PATH))
-//    println(hostInfo(ConfigKeys.FAIRD_TLS_KEY_PATH))
-//
-//
-//    //获得服务器资源信息
-//    println("--------------打印服务器资源信息--------------")
-//    val serverResourceInfo: Map[String, String] = dc.getServerResourceInfo
-//    println(serverResourceInfo(ResourceKeys.CPU_CORES))
-//    println(serverResourceInfo(ResourceKeys.CPU_USAGE_PERCENT))
-//    println(serverResourceInfo(ResourceKeys.JVM_MAX_MEMORY_MB))
-//    println(serverResourceInfo(ResourceKeys.JVM_USED_MEMORY_MB))
-//    println(serverResourceInfo(ResourceKeys.JVM_FREE_MEMORY_MB))
-//    println(serverResourceInfo(ResourceKeys.JVM_TOTAL_MEMORY_MB))
-//    println(serverResourceInfo(ResourceKeys.SYSTEM_MEMORY_TOTAL_MB))
-//    println(serverResourceInfo(ResourceKeys.SYSTEM_MEMORY_FREE_MB))
-//    println(serverResourceInfo(ResourceKeys.SYSTEM_MEMORY_USED_MB))
+    //获得所有的数据集名称
+    println("--------------打印数据集列表--------------")
+    val dataSetNames: Seq[String] = dc.listDataSetNames()
+    dataSetNames.foreach(println)
+
+    //获得指定数据集的所有的数据帧名称
+    println("--------------打印数据集 csv 所有数据帧名称--------------")
+    val frameNames: Seq[String] = dc.listDataFrameNames("csv")
+    frameNames.foreach(println)
+
+    //获得指定数据集的元数据信息
+    println("--------------打印数据集 csv 的元数据信息--------------")
+    val metaData: Model = dc.getDataSetMetaData("csv")
+    metaData.write(System.out, "TURTLE")
+
+    //获得host基本信息
+    println("--------------打印host基本信息--------------")
+    val hostInfo: Map[String, String] = dc.getHostInfo
+    println(hostInfo(ConfigKeys.FAIRD_HOST_NAME))
+    println(hostInfo(ConfigKeys.FAIRD_HOST_TITLE))
+    println(hostInfo(ConfigKeys.FAIRD_HOST_PORT))
+    println(hostInfo(ConfigKeys.FAIRD_HOST_POSITION))
+    println(hostInfo(ConfigKeys.FAIRD_HOST_DOMAIN))
+    println(hostInfo(ConfigKeys.FAIRD_TLS_ENABLED))
+    println(hostInfo(ConfigKeys.FAIRD_TLS_CERT_PATH))
+    println(hostInfo(ConfigKeys.FAIRD_TLS_KEY_PATH))
+
+
+    //获得服务器资源信息
+    println("--------------打印服务器资源信息--------------")
+    val serverResourceInfo: Map[String, String] = dc.getServerResourceInfo
+    println(serverResourceInfo(ResourceKeys.CPU_CORES))
+    println(serverResourceInfo(ResourceKeys.CPU_USAGE_PERCENT))
+    println(serverResourceInfo(ResourceKeys.JVM_MAX_MEMORY_MB))
+    println(serverResourceInfo(ResourceKeys.JVM_USED_MEMORY_MB))
+    println(serverResourceInfo(ResourceKeys.JVM_FREE_MEMORY_MB))
+    println(serverResourceInfo(ResourceKeys.JVM_TOTAL_MEMORY_MB))
+    println(serverResourceInfo(ResourceKeys.SYSTEM_MEMORY_TOTAL_MB))
+    println(serverResourceInfo(ResourceKeys.SYSTEM_MEMORY_FREE_MB))
+    println(serverResourceInfo(ResourceKeys.SYSTEM_MEMORY_USED_MB))
 
 
     //打开非结构化数据的文件列表数据帧
