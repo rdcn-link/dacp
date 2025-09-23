@@ -70,10 +70,15 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
 
   def close(): Unit = server.close()
 
-  def enableTLS(tlsCertFile: File, tlsKeyFile: File): DftpServer =
+  def enableTLS(tlsCertFile: File, tlsKeyFile: File): DacpServer = {
     server.enableTLS(tlsCertFile, tlsKeyFile)
+    this
+  }
 
-  def disableTLS(): DftpServer = server.disableTLS()
+  def disableTLS(): DacpServer = {
+    server.disableTLS()
+    this
+  }
 
   def doCook(request: CookRequest, response: CookResponse): Unit = {
     val transformTree = request.getTransformTree
@@ -388,6 +393,19 @@ object DacpServer {
     val props = loadProperties(fairdHome.getAbsolutePath + File.separator + "conf" + File.separator + "faird.conf")
     props.setProperty(ConfigKeys.FAIRD_HOME, fairdHome.getAbsolutePath)
     val fairdConfig = FairdConfig.load(props)
+    server.start(fairdConfig)
+  }
+
+  def startTLS(fairdHome: File, dataProvider: DataProvider,
+               dataReceiver: DataReceiver,
+               authProvider: AuthProvider,
+               tlsCertFile: File,
+               tlsKeyFile: File): Unit = {
+    val server: DacpServer = new DacpServer(dataProvider, dataReceiver, authProvider)
+    val props = loadProperties(fairdHome.getAbsolutePath + File.separator + "conf" + File.separator + "faird.conf")
+    props.setProperty(ConfigKeys.FAIRD_HOME, fairdHome.getAbsolutePath)
+    val fairdConfig = FairdConfig.load(props)
+    server.enableTLS(tlsCertFile, tlsKeyFile)
     server.start(fairdConfig)
   }
 

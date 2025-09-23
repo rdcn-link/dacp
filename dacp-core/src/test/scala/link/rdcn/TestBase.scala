@@ -156,9 +156,9 @@ abstract class DataProviderImpl extends DataProvider {
       override def iterator: ClosableIterator[Row] = ClosableIterator(Iterator.empty)()
     })
     dataFrameInfo.inputSource match {
-      case _: CSVSource => DataStreamSourceFactory.createCsvDataStreamSource(new File(dataFrameInfo.path))
-      case _: DirectorySource => DataStreamSourceFactory.createFileListDataStreamSource(new File(dataFrameInfo.path))
-      case _: ExcelSource => DataStreamSourceFactory.createExcelDataStreamSource(Paths.get(dataFrameInfo.path).toString)
+      case _: CSVSource => DataStreamSource.csv(new File(dataFrameInfo.path))
+      case _: DirectorySource => DataStreamSource.filePath(new File(dataFrameInfo.path))
+      case _: ExcelSource => DataStreamSource.excel(dataFrameInfo.path.toString)
       case _: InputSource => ???
     }
 
@@ -274,5 +274,6 @@ object ConfigLoader {
   def getConfig(): FairdConfig = fairdConfig
 
 }
+
 
 
