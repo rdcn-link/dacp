@@ -3,7 +3,7 @@ package link.rdcn.server
 import link.rdcn.ConfigLoader
 import link.rdcn.dacp.FairdConfig
 import link.rdcn.dacp.client.DacpClient
-import link.rdcn.dacp.received.DataReceiver
+import link.rdcn.dacp.receiver.DataReceiver
 import link.rdcn.dacp.server.DacpServer
 import link.rdcn.dacp.user.{AuthProvider, DataOperationType}
 import link.rdcn.provider.{DataFrameDocument, DataFrameStatistics, DataProvider}

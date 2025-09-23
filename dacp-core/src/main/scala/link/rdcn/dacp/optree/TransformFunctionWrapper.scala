@@ -1,6 +1,6 @@
 package link.rdcn.dacp.optree
 
-import link.rdcn.operation.{ExecutionContext, FunctionSerializer, FunctionWrapper, GenericFunctionCall, LangType}
+import link.rdcn.operation.{ExecutionContext, FunctionSerializer, FunctionWrapper, GenericFunctionCall}
 import link.rdcn.struct.{ClosableIterator, DataFrame, DefaultDataFrame, Row}
 import link.rdcn.util.DataUtils
 import link.rdcn.util.DataUtils.getDataFrameByStream
@@ -31,12 +31,13 @@ trait TransformFunctionWrapper extends FunctionWrapper {
 object TransformFunctionWrapper {
   def fromJsonObject(jo: JSONObject): TransformFunctionWrapper = {
     jo.getString("type") match {
-      case LangType.PYTHON_CODE.name => PythonCode(jo.getString("code"))
-      case LangType.JAVA_BIN.name => JavaBin(jo.getString("serializedBase64"))
-      case LangType.JAVA_CODE.name => JavaCode(jo.getString("javaCodeString"))
-      case LangType.PYTHON_BIN.name => PythonBin(jo.getString("functionName"), jo.getString("whlPath"))
-      case LangType.JAVA_JAR.name => JavaJar(jo.getString("jarPath"), jo.getString("functionName"))
-      case LangType.CPP_BIN.name => CppBin(jo.getString("cppPath"))
+      case LangTypeV2.PYTHON_CODE.name => PythonCode(jo.getString("code"))
+      case LangTypeV2.JAVA_BIN.name => JavaBin(jo.getString("serializedBase64"))
+      case LangTypeV2.JAVA_CODE.name => JavaCode(jo.getString("javaCodeString"))
+      case LangTypeV2.PYTHON_BIN.name => PythonBin(jo.getString("functionName"), jo.getString("whlPath"))
+      case LangTypeV2.JAVA_JAR.name => JavaJar(jo.getString("jarPath"), jo.getString("functionName"))
+      case LangTypeV2.CPP_BIN.name => CppBin(jo.getString("cppPath"))
+      case LangTypeV2.REPOSITORY_OPERATOR.name => RepositoryOperator(jo.getString("functionID"))
     }
   }
   def getJavaSerialized(functionCall: GenericFunctionCall): JavaBin = {
@@ -50,7 +51,7 @@ case class PythonCode(code: String, batchSize: Int = 100) extends TransformFunct
 
   override def toJson: JSONObject = {
     val jo = new JSONObject()
-    jo.put("type", LangType.PYTHON_CODE.name)
+    jo.put("type", LangTypeV2.PYTHON_CODE.name)
     jo.put("code", code)
   }
 
@@ -104,7 +105,7 @@ case class JavaBin(serializedBase64: String) extends TransformFunctionWrapper {
 
   override def toJson: JSONObject = {
     val jo = new JSONObject()
-    jo.put("type", LangType.JAVA_BIN.name)
+    jo.put("type", LangTypeV2.JAVA_BIN.name)
     jo.put("serializedBase64", serializedBase64)
   }
 
@@ -123,7 +124,7 @@ case class JavaCode(javaCodeString: String) extends TransformFunctionWrapper {
 
   override def toJson: JSONObject = {
     val jo = new JSONObject()
-    jo.put("type", LangType.JAVA_CODE.name)
+    jo.put("type", LangTypeV2.JAVA_CODE.name)
     jo.put("javaCodeString", javaCodeString)
   }
 
@@ -164,7 +165,7 @@ case class PythonBin(functionName: String, whlPath: String, batchSize: Int = 100
 
   override def toJson: JSONObject = {
     val jo = new JSONObject()
-    jo.put("type", LangType.PYTHON_BIN.name)
+    jo.put("type", LangTypeV2.PYTHON_BIN.name)
     jo.put("functionName", functionName)
     jo.put("whlPath", whlPath)
   }
@@ -189,7 +190,7 @@ case class PythonBin(functionName: String, whlPath: String, batchSize: Int = 100
 case class JavaJar(jarPath: String, functionName: String) extends TransformFunctionWrapper {
   override def toJson: JSONObject = {
     val jo = new JSONObject()
-    jo.put("type", LangType.JAVA_JAR.name)
+    jo.put("type", LangTypeV2.JAVA_JAR.name)
     jo.put("jarPath", jarPath)
     jo.put("functionName", functionName)
   }
@@ -236,7 +237,7 @@ case class JavaJar(jarPath: String, functionName: String) extends TransformFunct
 
 case class CppBin(cppPath: String) extends TransformFunctionWrapper {
 
-  override def toJson: JSONObject = new JSONObject().put("type", LangType.CPP_BIN.name)
+  override def toJson: JSONObject = new JSONObject().put("type", LangTypeV2.CPP_BIN.name)
     .put("cppPath", cppPath)
 
   override def applyToDataFrames(input: Seq[DataFrame], ctx: FlowExecutionContext): DataFrame = {
@@ -277,7 +278,7 @@ case class CppBin(cppPath: String) extends TransformFunctionWrapper {
 
 case class RepositoryOperator(functionID: String) extends TransformFunctionWrapper {
 
-  override def toJson: JSONObject = new JSONObject().put("type", LangType.REPOSITORY_OPERATOR.name)
+  override def toJson: JSONObject = new JSONObject().put("type", LangTypeV2.REPOSITORY_OPERATOR.name)
     .put("functionID", functionID)
 
   override def applyToDataFrames(inputs: Seq[DataFrame], ctx: FlowExecutionContext): DataFrame = {

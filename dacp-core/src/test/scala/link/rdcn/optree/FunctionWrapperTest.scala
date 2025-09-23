@@ -5,9 +5,9 @@ import link.rdcn.TestBase.getResourcePath
 import link.rdcn.TestProvider.dataProvider
 import link.rdcn.dacp.FairdConfig
 import link.rdcn.dacp.client.DacpClient.protocolSchema
-import link.rdcn.dacp.optree.{CppBin, FlowExecutionContext, JavaJar, JepInterpreterManager, OperatorRepository, PythonBin, RepositoryClient}
+import link.rdcn.dacp.optree.{CppBin, FlowExecutionContext, JavaJar, JepInterpreterManager, LangTypeV2, OperatorRepository, PythonBin, RepositoryClient}
 import link.rdcn.dacp.util.DataFrameMountUtils.mountDataFrameToTempPath
-import link.rdcn.operation.{FunctionWrapper, LangType, SharedInterpreterManager}
+import link.rdcn.operation.{FunctionWrapper, SharedInterpreterManager}
 import link.rdcn.struct.ValueType.IntType
 import link.rdcn.struct._
 import org.json.JSONObject
@@ -33,7 +33,7 @@ class FunctionWrapperTest {
     ConfigLoader.init(getResourcePath(""))
     val whlPath = Paths.get(ConfigLoader.fairdConfig.fairdHome, "lib", "link-0.1-py3-none-any.whl").toString
     val jo = new JSONObject()
-    jo.put("type", LangType.PYTHON_BIN.name)
+    jo.put("type", LangTypeV2.PYTHON_BIN.name)
     jo.put("functionID", "aaa.bbb.id1")
     jo.put("functionName", "normalize")
     jo.put("whlPath", whlPath)
@@ -47,7 +47,7 @@ class FunctionWrapperTest {
   def javaJarTest(): Unit = {
     ConfigLoader.init(getResourcePath(""))
     val jo = new JSONObject()
-    jo.put("type", LangType.JAVA_JAR.name)
+    jo.put("type", LangTypeV2.JAVA_JAR.name)
     jo.put("functionID", "aaa.bbb.id2")
     jo.put("fileName", "faird-plugin-impl-1.0-20250707.jar")
     val javaJar = FunctionWrapper(jo).asInstanceOf[JavaJar]
@@ -64,7 +64,7 @@ class FunctionWrapperTest {
     ConfigLoader.init(getResourcePath(""))
     val cppPath = Paths.get(ConfigLoader.fairdConfig.fairdHome, "lib", "cpp", "cpp_processor.exe").toString
     val jo = new JSONObject()
-    jo.put("type", LangType.CPP_BIN.name)
+    jo.put("type", LangTypeV2.CPP_BIN.name)
     jo.put("functionID", "cpp_processor.exe")
     val cppBin = FunctionWrapper(jo).asInstanceOf[CppBin]
     val newDf = cppBin.applyToInput(dataFrames, ctx).asInstanceOf[DataFrame]

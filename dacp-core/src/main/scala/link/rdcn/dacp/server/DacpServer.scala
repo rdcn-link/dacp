@@ -6,25 +6,26 @@ import link.rdcn.client.UrlValidator
 import link.rdcn.dacp.ConfigKeys.{FAIRD_HOME, FAIRD_HOST_DOMAIN, FAIRD_HOST_NAME, FAIRD_HOST_PORT, FAIRD_HOST_POSITION, FAIRD_HOST_TITLE, FAIRD_TLS_CERT_PATH, FAIRD_TLS_ENABLED, FAIRD_TLS_KEY_PATH, LOGGING_FILE_NAME, LOGGING_LEVEL_ROOT, LOGGING_PATTERN_CONSOLE, LOGGING_PATTERN_FILE}
 import link.rdcn.dacp.{ConfigKeys, FairdConfig}
 import link.rdcn.dacp.optree.{FlowExecutionContext, OperatorRepository, RepositoryClient, TransformTree}
-import link.rdcn.dacp.received.DataReceiver
+import link.rdcn.dacp.receiver.DataReceiver
 import link.rdcn.dacp.user.{AuthProvider, KeyAuthProvider}
 import link.rdcn.log.Logging
 import link.rdcn.operation.TransformOp
 import link.rdcn.provider.DataProvider
-import link.rdcn.server.{ActionRequest, ActionResponse, DftpMethodService, GetRequest, GetResponse, PutRequest, PutResponse}
+import link.rdcn.server.{ActionRequest, ActionResponse, BlobTicket, DftpMethodService, DftpTicket, GetRequest, GetResponse, GetTicket, PutRequest, PutResponse}
 import link.rdcn.server.dftp.DftpServer
 import link.rdcn.struct.ValueType.{LongType, RefType, StringType}
 import link.rdcn.struct.{DFRef, DataFrame, DataStreamSource, DefaultDataFrame, Row, StructType}
 import link.rdcn.user.{AuthenticationService, UserPrincipal}
-import link.rdcn.util.DataUtils
+import link.rdcn.util.{CodecUtils, DataUtils}
 import org.apache.jena.rdf.model.{Model, ModelFactory}
 import org.json.{JSONArray, JSONObject}
-import org.springframework.beans.factory.xml.{XmlBeanDefinitionReader, XmlBeanFactory}
+import org.springframework.beans.factory.xml.XmlBeanDefinitionReader
 import org.springframework.context.support.GenericApplicationContext
 import org.springframework.core.io.ClassPathResource
 
 import java.io.{File, FileInputStream, InputStreamReader, StringWriter}
 import java.lang.management.ManagementFactory
+import java.nio.charset.StandardCharsets
 import java.util.Properties
 import scala.collection.JavaConverters.asScalaBufferConverter
 
@@ -51,7 +52,7 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
       } catch {
         case e: Exception => response.sendError(500, e.getMessage)
       }
-      response.sendMessage(new JSONObject().put("status","success").toString())
+      response.send(CodecUtils.encodeString(new JSONObject().put("status","success").toString))
     }
 
     override def doAction(request: ActionRequest, response: ActionResponse): Unit =
@@ -86,7 +87,7 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
   }
 
   def doGet(request: GetRequest, response: GetResponse): Unit = {
-    request.getRequestedPath() match {
+    request.getRequestURI() match {
       case "/listDataSets" =>
         try {
           response.sendDataFrame(doListDataSets())
@@ -97,7 +98,7 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
         }
       case path if path.startsWith("/listDataFrames") => {
         try {
-          response.sendDataFrame(doListDataFrames(request.getRequestedPath()))
+          response.sendDataFrame(doListDataFrames(request.getRequestURI()))
         } catch {
           case e: Exception =>
             logger.error("Error while listDataFrames", e)
@@ -114,7 +115,7 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
         }
       }
       case otherPath =>
-        val userPrincipal = request.getRequestUserPrincipal()
+        val userPrincipal = request.getUserPrincipal()
         if(authProvider.checkPermission(userPrincipal, otherPath)){
           val dataStreamSource: DataStreamSource = dataProvider.getDataStreamSource(otherPath)
           val dataFrame: DataFrame = DefaultDataFrame(dataStreamSource.schema, dataStreamSource.iterator)
@@ -283,18 +284,48 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
     }
   }
 
-  private class DacpServerProducer(userAuthenticationService: AuthenticationService, dftpMethod: DftpMethodService) extends DftpServer(userAuthenticationService, dftpMethod) {
+  private class DacpServerProducer(userAuthenticationService: AuthenticationService, dftpMethod: DftpMethodService)
+    extends DftpServer(userAuthenticationService, dftpMethod)
+  {
     this.setProtocolSchema(protocolScheme)
-    override def sendStream(userPrincipal: UserPrincipal, ticket: Array[Byte], response: GetResponse): Unit = {
-      val dftpTicket = TicketWithCook.decodeTicket(ticket)
-      dftpTicket match {
-        case CookTicket(ticketContent) => {
-          val cookRequest: CookRequest = new CookRequest {
+
+    override def parseTicket(bytes: Array[Byte]): DftpTicket =
+    {
+      val BLOB_TICKET: Byte = 1
+      val GET_TICKET: Byte = 2
+      val COOK_TICKET: Byte = 3
+
+      val buffer = java.nio.ByteBuffer.wrap(bytes)
+      val typeId: Byte = buffer.get()
+      val len = buffer.getInt()
+      val b = new Array[Byte](len)
+      buffer.get(b)
+      val ticketContent = new String(b, StandardCharsets.UTF_8)
+      typeId match {
+        case BLOB_TICKET => BlobTicket(ticketContent)
+        case GET_TICKET => GetTicket(ticketContent)
+        case COOK_TICKET => CookTicket(ticketContent)
+        case _ => throw new Exception("parse fail")
+      }
+    }
+
+    override def getStreamByTicket(userPrincipal: UserPrincipal,
+                                   ticket: Array[Byte],
+                                   response: GetResponse): Unit =
+    {
+      val dftpTicket = parseTicket(ticket)
+      dftpTicket match
+      {
+        case CookTicket(ticketContent) =>
+        {
+          val cookRequest: CookRequest = new CookRequest
+          {
             override def getTransformTree: TransformOp = TransformTree.fromJsonString(ticketContent)
 
             override def getRequestUserPrincipal(): UserPrincipal = userPrincipal
           }
-          val cookResponse: CookResponse = new CookResponse {
+          val cookResponse: CookResponse = new CookResponse
+          {
             override def sendDataFrame(dataFrame: DataFrame): Unit =
               response.sendDataFrame(dataFrame)
 
@@ -303,7 +334,7 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
           }
           doCook(cookRequest, cookResponse)
         }
-        case other => super.sendStream(userPrincipal, ticket, response)
+        case other => super.getStreamByTicket(userPrincipal, ticket, response)
       }
     }
   }
@@ -336,24 +367,32 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
 object DacpServer {
   var server: DacpServer = _
 
-  def start(fairdHome: String): Unit = {
+  def start(fairdHome: File): Unit = {
     val context: GenericApplicationContext = new GenericApplicationContext();
     val reader: XmlBeanDefinitionReader = new XmlBeanDefinitionReader(context);
-    reader.loadBeanDefinitions(new ClassPathResource(s"$fairdHome" + File.separator + "conf" + File.separator + "faird.xml"));
+    reader.loadBeanDefinitions(new ClassPathResource(s"${fairdHome.getAbsolutePath}" + File.separator + "conf" + File.separator + "faird.xml"));
     context.refresh();
     val dataReceiver = context.getBean("dataReceiver").asInstanceOf[DataReceiver]
     val dataProvider = context.getBean("dataProvider").asInstanceOf[DataProvider]
     val authProvider = context.getBean("authProvider").asInstanceOf[AuthProvider]
 
     val server: DacpServer = new DacpServer(dataProvider, dataReceiver, authProvider)
-    val props = loadProperties(s"$fairdHome" + File.separator + "conf" + File.separator + "faird.conf")
-    props.setProperty(ConfigKeys.FAIRD_HOME, fairdHome)
+    val props = loadProperties(fairdHome.getAbsolutePath + File.separator + "conf" + File.separator + "faird.conf")
+    props.setProperty(ConfigKeys.FAIRD_HOME, fairdHome.getAbsolutePath)
+    val fairdConfig = FairdConfig.load(props)
+    server.start(fairdConfig)
+  }
+
+  def start(fairdHome: File, dataProvider: DataProvider, dataReceiver: DataReceiver, authProvider: AuthProvider): Unit = {
+    val server: DacpServer = new DacpServer(dataProvider, dataReceiver, authProvider)
+    val props = loadProperties(fairdHome.getAbsolutePath + File.separator + "conf" + File.separator + "faird.conf")
+    props.setProperty(ConfigKeys.FAIRD_HOME, fairdHome.getAbsolutePath)
     val fairdConfig = FairdConfig.load(props)
     server.start(fairdConfig)
   }
 
   def close(): Unit = {
-    server.close()
+    if(server!=null) server.close()
   }
 
   private def loadProperties(path: String): Properties = {

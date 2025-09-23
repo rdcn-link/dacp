@@ -3,7 +3,7 @@ package link.rdcn.dacp.union
 import link.rdcn.client.UrlValidator
 import link.rdcn.dacp.client.DacpClient
 import link.rdcn.dacp.optree.RemoteSourceProxyOp
-import link.rdcn.dacp.received.DataReceiver
+import link.rdcn.dacp.receiver.DataReceiver
 import link.rdcn.dacp.server.{CookRequest, CookResponse, DacpServer, KeyBasedAuthUtils}
 import link.rdcn.dacp.user.{AuthProvider, DataOperationType, KeyAuthProvider, KeyCredentials}
 import link.rdcn.operation.{SourceOp, TransformOp}
@@ -110,8 +110,8 @@ class UnionServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPr
   }
 
   override def doGet(request: GetRequest, response: GetResponse): Unit = {
-    if(Seq("/listDataSets", "/listHostInfo", "/listDataFrames").contains(request.getRequestedPath())) super.doGet(request, response)
-    else response.sendError(404, s"not found resource ${this.getBaseUrl()}${request.getRequestedPath()}")
+    if(Seq("/listDataSets", "/listHostInfo", "/listDataFrames").contains(request.getRequestURI())) super.doGet(request, response)
+    else response.sendError(404, s"not found resource ${this.getBaseUrl()}${request.getRequestURI()}")
   }
 
   private def createSignature(expirationTime: Long): KeyCredentials = {

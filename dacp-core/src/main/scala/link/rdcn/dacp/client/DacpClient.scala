@@ -1,10 +1,10 @@
 package link.rdcn.dacp.client
 
 import link.rdcn.client.{DftpClient, RemoteDataFrameProxy, UrlValidator}
-import link.rdcn.dacp.optree.{RepositoryOperator, TransformFunctionWrapper, TransformerNode}
+import link.rdcn.dacp.optree.{LangTypeV2, RepositoryOperator, TransformFunctionWrapper, TransformerNode}
 import link.rdcn.dacp.recipe.{ExecutionResult, Flow, FlowPath, RepositoryNode, SourceNode, Transformer11, Transformer21}
 import link.rdcn.dacp.server.CookTicket
-import link.rdcn.operation.{DataFrameCall11, DataFrameCall21, FunctionWrapper, LangType, SerializableFunction, SourceOp, TransformOp}
+import link.rdcn.operation.{DataFrameCall11, DataFrameCall21, SerializableFunction, SourceOp, TransformOp}
 import link.rdcn.provider.{DataFrameDocument, DataFrameStatistics}
 import link.rdcn.struct.{ClosableIterator, DFRef, DataFrame, DefaultDataFrame, Row, StructType}
 import link.rdcn.user.Credentials
@@ -84,7 +84,7 @@ class DacpClient(host: String, port: Int, useTLS: Boolean = false) extends DftpC
         transformerNode
       case node: RepositoryNode =>
         val jo = new JSONObject()
-        jo.put("type", LangType.REPOSITORY_OPERATOR.name)
+        jo.put("type", LangTypeV2.REPOSITORY_OPERATOR.name)
         jo.put("functionID", node.functionId)
         val transformerNode: TransformerNode = TransformerNode(TransformFunctionWrapper.fromJsonObject(jo).asInstanceOf[RepositoryOperator], transformFlowToOperation(path.children.head))
         transformerNode

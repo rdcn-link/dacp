@@ -6,7 +6,7 @@
  */
 package link.rdcn;
 
-import link.rdcn.dacp.received.DataReceiver;
+import link.rdcn.dacp.receiver.DataReceiver;
 import link.rdcn.dacp.server.DacpServer;
 import link.rdcn.struct.DataFrame;
 

@@ -7,7 +7,7 @@
 package link.rdcn
 
 import link.rdcn.TestBase.getResourcePath
-import link.rdcn.dacp.received.DataReceiver
+import link.rdcn.dacp.receiver.DataReceiver
 import link.rdcn.dacp.server.DacpServer
 import link.rdcn.struct.DataFrame
 
@@ -33,10 +33,10 @@ object ServerDemo {
       /** Called once before receiving any rows */
       override def start(): Unit = {}
 
-      /** Called for each received batch of rows */
+      /** Called for each receiver batch of rows */
       override def receiveRow(dataFrame: DataFrame): Unit = {}
 
-      /** Called after all batches are received successfully */
+      /** Called after all batches are receiver successfully */
       override def finish(): Unit = {}
     }, provider.authProvider).setTLS(tlsCertFile, tlsKeyFile).asInstanceOf[DacpServer].setServiceHandler().asInstanceOf[DacpServer]
     server.start(fairdHome)

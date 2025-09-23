@@ -9,7 +9,7 @@ package link.rdcn
 import link.rdcn.TestBase._
 import link.rdcn.dacp.ConfigKeys._
 import link.rdcn.dacp.client.DacpClient
-import link.rdcn.dacp.received.DataReceiver
+import link.rdcn.dacp.receiver.DataReceiver
 import link.rdcn.dacp.server.DacpServer
 import link.rdcn.dacp.user.{AuthProvider, DataOperationType}
 import link.rdcn.server.BlobRegistry
