@@ -4,8 +4,7 @@
  * @Data 2025/7/24 18:08
  * @Modified By:
  */
-package link.rdcn
-
+package link.rdcn.demo
 
 import link.rdcn.TestBase.getResourcePath
 import link.rdcn.dacp.client.DacpClient

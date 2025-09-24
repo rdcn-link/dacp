@@ -1,18 +1,18 @@
-package link.rdcn
+package link.rdcn.demo
 
 import link.rdcn.TestBase.{getResourcePath, testClassesDir}
+import link.rdcn.{TestBase, TestDemoProvider}
 import link.rdcn.dacp.client.DacpClient
 import link.rdcn.dacp.recipe.{ExecutionResult, Flow, FlowNode}
 import link.rdcn.dacp.{ConfigKeys, ResourceKeys}
 import link.rdcn.provider.{DataFrameDocument, DataFrameStatistics}
-import link.rdcn.struct.{Blob, DFRef, DataFrame, DataStreamSource, DefaultDataFrame, Row}
+import link.rdcn.struct._
 import link.rdcn.user.UsernamePassword
 import org.apache.commons.io.IOUtils
 import org.apache.jena.rdf.model.Model
 
 import java.io.{File, FileOutputStream}
 import java.nio.file.{Path, Paths}
-import scala.collection.mutable
 
 /**
  * @Author Yomi
@@ -22,7 +22,6 @@ import scala.collection.mutable
  */
 object ClientDemo {
   val provider = new TestDemoProvider
-  TestBase
   val tlsFile = new File(Paths.get(getResourcePath("tls"), "faird").toString)
 
   def main(args: Array[String]): Unit = {

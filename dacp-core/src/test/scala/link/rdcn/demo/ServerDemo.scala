@@ -4,11 +4,11 @@
  * @Data 2025/7/22 10:49
  * @Modified By:
  */
-package link.rdcn
+package link.rdcn.demo
 
 import link.rdcn.TestBase._
+import link.rdcn.TestDemoProvider
 import link.rdcn.dacp.receiver.DataReceiver
-import link.rdcn.dacp.{ConfigKeys, FairdConfig}
 import link.rdcn.dacp.server.DacpServer
 import link.rdcn.struct.DataFrame
 
