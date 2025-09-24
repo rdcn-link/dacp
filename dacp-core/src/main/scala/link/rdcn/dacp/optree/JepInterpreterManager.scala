@@ -3,6 +3,7 @@ package link.rdcn.dacp.optree
 import jep._
 import link.rdcn.log.Logging
 
+import java.io.{BufferedReader, InputStreamReader}
 import java.nio.file.{Files, Paths}
 import scala.sys.process._
 
@@ -34,7 +35,7 @@ object JepInterpreterManager extends Logging {
 
   }
 
-  private def getPythonExecutablePath(env: String): String = {
+  private def getPythonExecutablePath1(env: String): String = {
     // 1. 获取当前进程的 PATH 环境变量，考虑 PYTHONHOME 作为备选
     // 2. 尝试从 CONDA_PREFIX 构造 Anaconda 环境的 bin/Scripts 目录，并添加到 PATH 前面
     val condaPrefixPath = sys.env.get("CONDA_PREFIX") match {
@@ -82,6 +83,96 @@ object JepInterpreterManager extends Logging {
       "or the CONDA_PREFIX environment variable points to a valid Anaconda environment."
     println(s"Error: $errorMessage")
     sys.error(errorMessage) // 抛出错误终止程序
+  }
+
+  private def getPythonExecutablePath(env: String): String = {
+    // 1. Get the current OS
+    val osName = sys.props("os.name").toLowerCase
+    val isWindows = osName.contains("windows")
+    val isUnixLike = !isWindows
+
+    // 2. Handle conda environment paths
+    val condaPrefixPath = sys.env.get("CONDA_PREFIX") match {
+      case Some(prefix) =>
+        if (isWindows) {
+          // Windows: check both Scripts and bin directories
+          val scriptsPath = Paths.get(prefix, "Scripts").toString
+          val binPath = Paths.get(prefix, "bin").toString
+          Seq(scriptsPath, binPath).filter(p => Files.exists(Paths.get(p)))
+        } else {
+          // Unix-like: only check bin directory
+          val binPath = Paths.get(prefix, "bin").toString
+          if (Files.exists(Paths.get(binPath))) Seq(binPath) else Seq.empty
+        }
+      case None => Seq.empty[String]
+    }
+
+    // 3. Handle PYTHONHOME if present
+    val pythonHomePath = sys.env.get("PYTHONHOME").map { home =>
+      if (isWindows) {
+        Seq(Paths.get(home).toString)
+      } else {
+        Seq(Paths.get(home, "bin").toString)
+      }
+    }.getOrElse(Seq.empty)
+
+    // 4. Prepare all possible executable names based on platform
+    val executableNames = if (isWindows) {
+      Seq("python.exe", "python3.exe", "python")
+    } else {
+      Seq("python3", "python", "python3.9", "python3.8", "python3.7", "python2.7")
+    }
+
+    // 5. Prepare PATH directories with priority to conda and python home
+    val pathSeparator = sys.props("path.separator")
+    val pathDirs = (condaPrefixPath ++ pythonHomePath ++ env.split(pathSeparator)).distinct
+
+    // 6. Search for the executable
+    for (dir <- pathDirs) {
+      val dirPath = Paths.get(dir)
+      if (Files.exists(dirPath)) {
+        for (execName <- executableNames) {
+          val fullPath = dirPath.resolve(execName)
+          if (Files.exists(fullPath)) {
+            if (isUnixLike) {
+              // On Unix-like systems, check if it's executable
+              try {
+                if (Files.isExecutable(fullPath)) {
+                  return fullPath.toString
+                }
+              } catch {
+                case _: SecurityException => // Ignore if we can't check permissions
+              }
+            } else {
+              // On Windows, just check if the file exists
+              return fullPath.toString
+            }
+          }
+        }
+      }
+    }
+
+    // 7. Fallback to trying which/where command
+    val fallbackCommand = if (isWindows) "where python" else "which python3 || which python"
+    try {
+      val process = Runtime.getRuntime.exec(fallbackCommand)
+      val reader = new BufferedReader(new InputStreamReader(process.getInputStream))
+      Option(reader.readLine()).map(_.trim).filterNot(_.isEmpty) match {
+        case Some(path) if Files.exists(Paths.get(path)) => return path
+        case _ => // Continue to error
+      }
+    } catch {
+      case _: Exception => // Ignore if command fails
+    }
+
+    // 8. If nothing found, throw error
+    val errorMessage =
+      s"""Failed to find Python executable in any PATH directory.
+         |Searched in: ${pathDirs.mkString(", ")}
+         |Tried executable names: ${executableNames.mkString(", ")}
+         |Please ensure Python is installed and available in your system's PATH,
+         |or set CONDA_PREFIX/PYTHONHOME environment variables correctly.""".stripMargin
+    sys.error(errorMessage)
   }
 
   private class JavaUtilOnlyClassEnquirer extends ClassEnquirer {

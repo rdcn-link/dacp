@@ -8,7 +8,8 @@ import org.json.JSONObject
 
 import java.io.{BufferedReader, BufferedWriter, InputStreamReader, OutputStreamWriter}
 import java.net.{URL, URLClassLoader}
-import java.util.{Base64, ServiceLoader}
+import java.nio.file.Paths
+import java.util.{Base64, ServiceLoader, UUID}
 import scala.collection.JavaConverters.{asJavaIterableConverter, asScalaBufferConverter, mapAsScalaMapConverter}
 
 /**
@@ -171,10 +172,12 @@ case class PythonBin(functionName: String, whlPath: String, batchSize: Int = 100
   }
   //TODO 支持对一组DataFrame的处理
   override def applyToDataFrames(input: Seq[DataFrame], ctx: FlowExecutionContext): DataFrame = {
-    val jep = ctx.getSharedInterpreter().getOrElse(throw new IllegalArgumentException("Python interpreter is required"))
-    jep.eval("import link.rdcn.dacp.recipe.registry as registry")
+    val jep = ctx.getSubInterpreter(Paths.get(ctx.pythonHome,
+        LangTypeV2.PYTHON_BIN.name+UUID.randomUUID()).toString, whlPath)
+      .getOrElse(throw new IllegalArgumentException("Python interpreter is required"))
+    jep.eval("import link.rdcn.operators.registry as registry")
     jep.set("operator_name", functionName)
-    jep.eval("func = registry.registry(operator_name)")
+    jep.eval("func = registry.get_operator(operator_name)")
     val stream = input.head.mapIterator(rows => {
       rows.grouped(batchSize).flatMap(rowSeq => {
         jep.set("input_rows", rowSeq.map(_.toSeq.asJava).asJava)

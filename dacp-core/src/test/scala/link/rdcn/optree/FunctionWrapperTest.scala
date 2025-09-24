@@ -1,5 +1,6 @@
 package link.rdcn.optree
 
+import jep.SharedInterpreter
 import link.rdcn.ConfigLoader
 import link.rdcn.TestBase.getResourcePath
 import link.rdcn.TestProvider.dataProvider
@@ -35,16 +36,14 @@ class FunctionWrapperTest {
 
   @Test
   def pythonBinTest(): Unit = {
+    System.setProperty("java.library.path", "/opt/homebrew/lib/python3.11/site-packages/jep/")
     val whlPath = Paths.get(ConfigLoader.fairdConfig.fairdHome, "lib", "link-0.1-py3-none-any.whl").toString
-    //    val jo = new JSONObject()
-//    jo.put("type", LangType.PYTHON_BIN.name)
-//    jo.put("functionID", "aaa.bbb.id1")
-//    jo.put("functionName", "normalize")
-//    jo.put("whlPath", whlPath)
     val pythonBin = PythonBin("normalize",whlPath)
-    val newRow = pythonBin.applyToDataFrames(dataFrames, ctx).asInstanceOf[Iterator[Row]].next()
-    assert(newRow._1 == 0.33)
-    assert(newRow._2 == 0.67)
+    val df = pythonBin.applyToDataFrames(dataFrames, ctx)
+    df.foreach(row => {
+      assert(row._1 == 0.33)
+      assert(row._2 == 0.67)
+    })
   }
 
   @Test
@@ -145,6 +144,8 @@ class FunctionWrapperTest {
     override val fairdConfig: FairdConfig = ConfigLoader.fairdConfig
     override val pythonHome: String = fairdConfig.pythonHome
     var baseUrl: String = s"$protocolSchema://${fairdConfig.hostPosition}:${fairdConfig.hostPort}"
+
+    override def getSharedInterpreter(): Option[SharedInterpreter] = Some(SharedInterpreterManager.getInterpreter)
 
     override def loadSourceDataFrame(dataFrameNameUrl: String): Option[DataFrame] = {
       val resourcePath = if (dataFrameNameUrl.startsWith(baseUrl)) dataFrameNameUrl.stripPrefix(baseUrl)
