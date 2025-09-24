@@ -13,11 +13,9 @@ class ResourceUnavailableTest extends TestProvider {
   def testAccessInvalidDataFrame(): Unit = {
     val serverException = assertThrows(
       classOf[FlightRuntimeException],
-      {
-        val df = dc.getByPath("/csv/invalid_not.csv") // 假设没有该文件
-        () => df.foreach(_ => {})
-      }
+        () => dc.getByPath("/csv/invalid_not.csv").foreach(_ => {})
     )
-    assertEquals(CallStatus.UNAUTHORIZED, serverException.status())
+    assertEquals(CallStatus.UNAUTHORIZED.code(), serverException.status().code())
+    assertEquals("access dataFrame /csv/invalid_not.csv Forbidden",serverException.status().description())
   }
 }

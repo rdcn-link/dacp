@@ -12,6 +12,7 @@ class ErrorCodeTest {
       classOf[FlightRuntimeException],
       () => sendErrorWithFlightStatus(0,"unknown error")
     )
-    assertEquals(CallStatus.UNKNOWN,ServerException.status())
+    assertEquals(CallStatus.UNKNOWN.code(),ServerException.status().code())
+    assertEquals("unknown error",ServerException.status().description())
   }
 }

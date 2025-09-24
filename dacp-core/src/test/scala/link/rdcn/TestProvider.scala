@@ -64,16 +64,20 @@ object TestProvider {
       if (credentials.isInstanceOf[UsernamePassword]) {
         val usernamePassword = credentials.asInstanceOf[UsernamePassword]
         if (usernamePassword.username == null && usernamePassword.password == null) {
-          sendErrorWithFlightStatus(404,"User not found!")
+          sendErrorWithFlightStatus(401,"User not found!")
         }
         else if (usernamePassword.username == adminUsername && usernamePassword.password == adminPassword) {
           new TestAuthenticatedUser(adminUsername, genToken())
         } else if (usernamePassword.username == userUsername && usernamePassword.password == userPassword) {
           new TestAuthenticatedUser(adminUsername, genToken())
         }
-        else if (usernamePassword.username != "admin") {
-          sendErrorWithFlightStatus(403,"User unauthorized!")
-        } else {
+        else if (usernamePassword.username != adminUsername) {
+          sendErrorWithFlightStatus(401,"User unauthorized!")
+        } else if (usernamePassword.username == adminUsername && usernamePassword.password != adminPassword) {
+          sendErrorWithFlightStatus(401,"Wrong password!")
+        }
+        else
+        {
           sendErrorWithFlightStatus(0,"User authenticate unknown error!")
         }
       } else if (credentials == Credentials.ANONYMOUS) {

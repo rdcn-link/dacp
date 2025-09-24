@@ -49,7 +49,7 @@ class RepositoryClientTest {
     assertEquals(jarName, jsonInfo.getString("packageName"))
     assertEquals("JAVA_JAR", jsonInfo.getString("type"))
     assertEquals("Java Application", jsonInfo.getString("desc"))
-    assertEquals("Transfomer11", jsonInfo.getString("functionName"))
+    assertEquals("Transformer11", jsonInfo.getString("functionName"))
   }
 
   @Test

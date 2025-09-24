@@ -4,7 +4,7 @@ import link.rdcn.TestBase.getOutputDir
 import link.rdcn.TestProvider
 import link.rdcn.TestProvider._
 import link.rdcn.client.DataFrameOperationTest._
-import link.rdcn.dacp.recipe.{ExecutionResult, Flow, SourceNode, Transformer11}
+import link.rdcn.dacp.recipe.{ExecutionResult, Flow, SourceNode, Transformer11, Transformer21}
 import link.rdcn.struct._
 import org.apache.arrow.flight.FlightRuntimeException
 import org.junit.jupiter.api.Assertions.{assertEquals, assertThrows, assertTrue}
@@ -33,6 +33,14 @@ object DataFrameOperationTest {
   val udfC = (num: Int) => new Transformer11 {
     override def transform(dataFrame: DataFrame): DataFrame = {
       dataFrame.map(row => Row.fromTuple(row.getAs[Long](0), row.get(1), num))
+    }
+  }
+
+  val udfUnion = new Transformer21 {
+    override def transform(leftDataFrame: DataFrame, rightDataFrame: DataFrame): DataFrame = {
+      val left: List[Long] = leftDataFrame.collect().map(row => row._1.asInstanceOf[Long])
+      val right: List[Long] = rightDataFrame.collect().map(row => row._1.asInstanceOf[Long])
+      DataFrame.fromSeq(left.zip(right).map { case (a, b) => a + b })
     }
   }
 
@@ -70,6 +78,22 @@ object DataFrameOperationTest {
       val rest = cols.tail.mkString(",")
       s"$id,$rest,$transformationNum"
     }
+  }
+
+  def transformUnion(linesLeft: Seq[String], linesRight: Seq[String]): Seq[String] = {
+    val resultLeft: Seq[Long] = linesLeft.map { line =>
+      val cols = line.split(",")
+      val id = cols(0).toLong
+      val rest = cols.tail.mkString(",")
+      id
+    }
+    val resultRight: Seq[Long] = linesRight.map { line =>
+      val cols = line.split(",")
+      val id = cols(0).toLong
+      val rest = cols.tail.mkString(",")
+      id
+    }
+    resultLeft.zip(resultRight).map { case (a, b) => s"${a + b}" }
   }
 
   def transformD(lines: Seq[String]): Seq[String] = {
@@ -410,20 +434,17 @@ class DataFrameOperationTest extends TestProvider {
   //  A   B
   //   \ /
   //    C
-//  TODO modify c to unionOp
-  @ParameterizedTest
-  @ValueSource(ints = Array(10))
-  def testDataFrameUDFJoinDAG(num: Int): Unit = {
+  @Test
+  def testDataFrameUDFJoinDAG(): Unit = {
     val lines1 = Source.fromFile(Paths.get(csvDir, "data_1.csv").toString).getLines().toSeq.tail
     val lines2 = Source.fromFile(Paths.get(csvDir, "data_2.csv").toString).getLines().toSeq.tail
-    val expectedOutputAC = addLineBreak(transformC(lines1, num)).mkString
-    val expectedOutputBC = addLineBreak(transformC(lines2, num)).mkString
+    val expectedOutputAC = addLineBreak(transformUnion(lines1, lines2)).mkString
 
     val transformerDAG = Flow(
       Map(
         "A" -> SourceNode("/csv/data_1.csv"),
         "B" -> SourceNode("/csv/data_2.csv"),
-        "C" -> udfC(num)
+        "C" -> udfUnion
       ),
       Map(
         "A" -> Seq("C"),
@@ -443,7 +464,6 @@ class DataFrameOperationTest extends TestProvider {
     }
     val listActualOutput = actualOutputs.toList
     assertEquals(expectedOutputAC, listActualOutput(0))
-    assertEquals(expectedOutputBC, listActualOutput(1))
   }
 
 
@@ -458,15 +478,14 @@ class DataFrameOperationTest extends TestProvider {
   def testDataFrameUDFHybridDAG(num: Int): Unit = {
     val lines1 = Source.fromFile(Paths.get(csvDir, "data_1.csv").toString).getLines().toSeq.tail
     val lines2 = Source.fromFile(Paths.get(csvDir, "data_1.csv").toString).getLines().toSeq.tail
-    val expectedOutputABDE = addLineBreak(transformE(transformD(transformB(lines1, num)))).mkString
-    val expectedOutputACDE = addLineBreak(transformE(transformD(transformC(lines2, num)))).mkString
+    val expectedOutputABCDE = addLineBreak(transformE(transformUnion(transformB(lines1, num),transformC(lines2, num)))).mkString
 
     val transformerDAG = Flow(
       Map(
         "A" -> SourceNode("/csv/data_1.csv"),
         "B" -> udfB(num),
         "C" -> udfC(num),
-        "D" -> udfD,
+        "D" -> udfUnion,
         "E" -> udfE
       ),
       Map(
@@ -488,8 +507,7 @@ class DataFrameOperationTest extends TestProvider {
       stringWriter.toString
     }
     val listActualOutput = actualOutputs.toList
-    assertEquals(expectedOutputABDE, listActualOutput(0))
-    assertEquals(expectedOutputACDE, listActualOutput(1))
+    assertEquals(expectedOutputABCDE, listActualOutput(0))
   }
 
   @ParameterizedTest
