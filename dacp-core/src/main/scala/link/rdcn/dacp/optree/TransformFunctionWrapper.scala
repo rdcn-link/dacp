@@ -171,10 +171,11 @@ case class PythonBin(functionName: String, whlPath: String, batchSize: Int = 100
   }
   //TODO 支持对一组DataFrame的处理
   override def applyToDataFrames(input: Seq[DataFrame], ctx: FlowExecutionContext): DataFrame = {
-    val jep = ctx.getSharedInterpreter().getOrElse(throw new IllegalArgumentException("Python interpreter is required"))
-    jep.eval("import link.rdcn.dacp.recipe.registry as registry")
+    val jep = ctx.getSubInterpreter("/Users/renhao/IdeaProjects/dacp/dacp-core/src/test/resources/conf/sitePackage", whlPath)
+      .getOrElse(throw new IllegalArgumentException("Python interpreter is required"))
+    jep.eval("import link.rdcn.operators.registry as registry")
     jep.set("operator_name", functionName)
-    jep.eval("func = registry.registry(operator_name)")
+    jep.eval("func = registry.get_operator(operator_name)")
     val stream = input.head.mapIterator(rows => {
       rows.grouped(batchSize).flatMap(rowSeq => {
         jep.set("input_rows", rowSeq.map(_.toSeq.asJava).asJava)
