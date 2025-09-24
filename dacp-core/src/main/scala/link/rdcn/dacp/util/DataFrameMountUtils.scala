@@ -5,6 +5,7 @@ import link.rdcn.log.Logging
 import link.rdcn.struct.DefaultDataFrame
 
 import java.nio.file.{Files, Path}
+import java.util.concurrent.{CountDownLatch, TimeUnit}
 
 object DataFrameMountUtils extends Logging {
 
@@ -14,6 +15,7 @@ object DataFrameMountUtils extends Logging {
 
     val batchSource = new RowBatchFSSource(df, batchSize)
     val fs = new RowBatchFS(batchSource)
+    val mountLatch = new CountDownLatch(1)
 
     //创建临时挂载目录（确保该目录存在且为空）
     val mountDir = Files.createTempDirectory("fuse_mount_test")
@@ -24,17 +26,29 @@ object DataFrameMountUtils extends Logging {
       try {
         // 阻塞挂载，直到卸载
         fs.mount(mountDir, true)
+        mountLatch.countDown()
+        logger.info(s"Successfully mounted FUSE at $mountDir")
       } catch {
         case e: Exception =>
           e.printStackTrace()
+          logger.error("Failed to mount FUSE file system!", e)
+          mountLatch.countDown()
       }
     }, "FuseMountThread")
 
-    mountThread.setDaemon(true)
+//    mountThread.setDaemon(true)
     mountThread.start()
 
     // 等待挂载生效（根据情况等待几秒）
-    waitForMountReady(mountDir)
+//    waitForMountReady(mountDir)
+    val isMounted = mountLatch.await(30000, TimeUnit.SECONDS) // 等待 3 秒
+
+    // 2. 在检查文件前，首先判断挂载是否成功
+    if (!isMounted) {
+      throw new RuntimeException(s"FUSE mount thread did not complete mounting within 3 seconds.")
+    }
+
+
 
     // 访问挂载目录，列出文件名并读取第一个批次文件内容打印
     val files = mountDir.toFile.listFiles()

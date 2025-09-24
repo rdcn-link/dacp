@@ -2,7 +2,7 @@ package link.rdcn.optree
 
 import jep.SharedInterpreter
 import link.rdcn.ConfigLoader
-import link.rdcn.TestBase.getResourcePath
+import link.rdcn.TestBase.{getOutputDir, getResourcePath}
 import link.rdcn.TestProvider.dataProvider
 import link.rdcn.dacp.FairdConfig
 import link.rdcn.dacp.client.DacpClient.protocolSchema
@@ -125,8 +125,8 @@ class FunctionWrapperTest {
     val df = DefaultDataFrame(schema, ClosableIterator(rows)())
     mountDataFrameToTempPath(df, file => {
       val inputPath = file.toPath.toString
-      val outPutPath = "/home/renhao/IdeaProjects/faird-java/faird-core/src/test/resources/temp/temp.json"
-      val cppPath = "/home/renhao/IdeaProjects/faird-java/faird-core/src/test/resources/lib/cpp/processor"
+      val outPutPath = Paths.get(getOutputDir("test_output"),"output").toString
+      val cppPath = Paths.get(ConfigLoader.fairdConfig.fairdHome, "lib", "cpp", "cpp_processor.exe").toString
       runCppProcess(cppPath = cppPath, inputPath = inputPath, outputPath = outPutPath)
     })
   }

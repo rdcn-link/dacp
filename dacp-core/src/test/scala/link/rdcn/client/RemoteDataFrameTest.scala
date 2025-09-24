@@ -80,7 +80,7 @@ object DataFrameOperationTest {
     }
   }
 
-  def transformUnion(linesLeft: Seq[String], linesRight: Seq[String], transformationNum: Int): Seq[String] = {
+  def transformUnion(linesLeft: Seq[String], linesRight: Seq[String]): Seq[String] = {
     val resultLeft: Seq[Long] = linesLeft.map { line =>
       val cols = line.split(",")
       val id = cols(0).toLong
@@ -434,13 +434,11 @@ class DataFrameOperationTest extends TestProvider {
   //  A   B
   //   \ /
   //    C
-  //  TODO modify c to unionOp
-  @ParameterizedTest
-  @ValueSource(ints = Array(10))
-  def testDataFrameUDFJoinDAG(num: Int): Unit = {
+  @Test
+  def testDataFrameUDFJoinDAG(): Unit = {
     val lines1 = Source.fromFile(Paths.get(csvDir, "data_1.csv").toString).getLines().toSeq.tail
     val lines2 = Source.fromFile(Paths.get(csvDir, "data_2.csv").toString).getLines().toSeq.tail
-    val expectedOutputAC = addLineBreak(transformUnion(lines1, lines2, num)).mkString
+    val expectedOutputAC = addLineBreak(transformUnion(lines1, lines2)).mkString
 
     val transformerDAG = Flow(
       Map(
@@ -480,8 +478,7 @@ class DataFrameOperationTest extends TestProvider {
   def testDataFrameUDFHybridDAG(num: Int): Unit = {
     val lines1 = Source.fromFile(Paths.get(csvDir, "data_1.csv").toString).getLines().toSeq.tail
     val lines2 = Source.fromFile(Paths.get(csvDir, "data_1.csv").toString).getLines().toSeq.tail
-    val expectedOutputABDE = addLineBreak(transformE(transformD(transformB(lines1, num)))).mkString
-    val expectedOutputACDE = addLineBreak(transformE(transformD(transformC(lines2, num)))).mkString
+    val expectedOutputABCDE = addLineBreak(transformE(transformUnion(transformB(lines1, num),transformC(lines2, num)))).mkString
 
     val transformerDAG = Flow(
       Map(
@@ -510,8 +507,7 @@ class DataFrameOperationTest extends TestProvider {
       stringWriter.toString
     }
     val listActualOutput = actualOutputs.toList
-    assertEquals(expectedOutputABDE, listActualOutput(0))
-    assertEquals(expectedOutputACDE, listActualOutput(1))
+    assertEquals(expectedOutputABCDE, listActualOutput(0))
   }
 
   @ParameterizedTest
