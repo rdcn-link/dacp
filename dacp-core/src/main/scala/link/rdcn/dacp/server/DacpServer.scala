@@ -1,21 +1,20 @@
 package link.rdcn.dacp.server
 
 import com.sun.management.OperatingSystemMXBean
-import link.rdcn.DftpConfig
+import link.rdcn.{DftpConfig, Logging}
 import link.rdcn.client.UrlValidator
 import link.rdcn.dacp.ConfigKeys.{FAIRD_HOME, FAIRD_HOST_DOMAIN, FAIRD_HOST_NAME, FAIRD_HOST_PORT, FAIRD_HOST_POSITION, FAIRD_HOST_TITLE, FAIRD_TLS_CERT_PATH, FAIRD_TLS_ENABLED, FAIRD_TLS_KEY_PATH, LOGGING_FILE_NAME, LOGGING_LEVEL_ROOT, LOGGING_PATTERN_CONSOLE, LOGGING_PATTERN_FILE}
 import link.rdcn.dacp.{ConfigKeys, FairdConfig}
 import link.rdcn.dacp.optree.{FlowExecutionContext, OperatorRepository, RepositoryClient, TransformTree}
 import link.rdcn.dacp.receiver.DataReceiver
 import link.rdcn.dacp.user.{AuthProvider, KeyAuthProvider}
-import link.rdcn.log.Logging
 import link.rdcn.operation.TransformOp
 import link.rdcn.provider.DataProvider
 import link.rdcn.server.{ActionRequest, ActionResponse, BlobTicket, DftpMethodService, DftpTicket, GetRequest, GetResponse, GetTicket, PutRequest, PutResponse}
 import link.rdcn.server.dftp.DftpServer
 import link.rdcn.struct.ValueType.{LongType, RefType, StringType}
 import link.rdcn.struct.{DFRef, DataFrame, DataStreamSource, DefaultDataFrame, Row, StructType}
-import link.rdcn.user.{AuthenticationService, UserPrincipal}
+import link.rdcn.user.{AuthenticationService, Credentials, UserPrincipal}
 import link.rdcn.util.{CodecUtils, DataUtils}
 import org.apache.jena.rdf.model.{Model, ModelFactory}
 import org.json.{JSONArray, JSONObject}
@@ -346,10 +345,10 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
 
   private def ctx = new FlowExecutionContext {
 
-    override val fairdConfig: FairdConfig = getFairdConfig()
+    override val fairdHome: String = getFairdConfig().fairdHome
 
     //TODO pythonHome from env
-    override def pythonHome: String = this.fairdConfig.pythonHome
+    override def pythonHome: String = getFairdConfig().pythonHome
 
     override def loadSourceDataFrame(dataFrameNameUrl: String): Option[DataFrame] = {
       val resourcePath = if(dataFrameNameUrl.startsWith(baseUrl)) dataFrameNameUrl.stripPrefix(baseUrl)
@@ -366,6 +365,8 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
     }
     //TODO Repository config
     override def getRepositoryClient(): Option[OperatorRepository] = Some(new RepositoryClient("10.0.89.38", 8088))
+
+    override def loadRemoteDataFrame(baseUrl: String, path: String, credentials: Credentials): Option[DataFrame] = ???
   }
 }
 

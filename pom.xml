@@ -13,6 +13,7 @@
     <module>dacp-recipe</module>
     <module>dacp-core</module>
     <module>dacp-recipe-impl</module>
+    <module>dacp-flow</module>
   </modules>
 
   <properties>

@@ -32,11 +32,11 @@ object FlowNode {
     SourceNode(dataFrameName)
   }
 
-  def ofTransfomer11(transformer11: Transformer11): Transformer11 = {
+  def ofTransformer11(transformer11: Transformer11): Transformer11 = {
     transformer11
   }
 
-  def ofTransfomer21(transformer21: Transformer21): Transformer21 = {
+  def ofTransformer21(transformer21: Transformer21): Transformer21 = {
     transformer21
   }
 

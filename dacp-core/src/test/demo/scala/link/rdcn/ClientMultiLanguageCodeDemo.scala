@@ -28,7 +28,7 @@ object ClientMultiLanguageCodeDemo {
     //构建数据源节点
     val sourceNode: FlowNode = FlowNode.source("/csv/data_1.csv")
     //构建自定义操作节点
-    val transformer11Node = FlowNode.ofTransfomer11(new Transformer11 {
+    val transformer11Node = FlowNode.ofTransformer11(new Transformer11 {
       override def transform(dataFrame: DataFrame): DataFrame = {
         dataFrame.map(row => Row.fromTuple(row.getAs[Long](0), row.get(1), 100))
       }
