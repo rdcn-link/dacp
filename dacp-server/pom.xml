@@ -7,10 +7,10 @@
         <version>0.5.0-20250928</version>
     </parent>
 
-    <artifactId>dacp-flow</artifactId>
+    <artifactId>dacp-server</artifactId>
     <packaging>jar</packaging>
 
-    <name>dacp-flow</name>
+    <name>dacp-server</name>
     <url>http://maven.apache.org</url>
 
     <properties>
@@ -22,22 +22,41 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-params</artifactId>
-            <version>5.13.1</version>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-library</artifactId>
+            <version>${scala.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>3.8.1</version>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.github.serceman</groupId>
-            <artifactId>jnr-fuse</artifactId>
-            <version>0.5.5</version>
+            <groupId>link.rdcn</groupId>
+            <artifactId>dacp-common</artifactId>
+            <version>0.5.0-20250928</version>
         </dependency>
         <dependency>
             <groupId>link.rdcn</groupId>
-            <artifactId>dacp-recipe</artifactId>
+            <artifactId>dacp-flow</artifactId>
             <version>0.5.0-20250928</version>
         </dependency>
-
+        <dependency>
+            <groupId>link.rdcn</groupId>
+            <artifactId>dftp-server</artifactId>
+            <version>0.5.0-20250928</version>
+        </dependency>
+        <dependency>
+            <groupId>link.rdcn</groupId>
+            <artifactId>dacp-client</artifactId>
+            <version>0.5.0-20250928</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>2.17.2</version>
+        </dependency>
 
         <!-- Akka HTTP -->
         <dependency>
@@ -71,6 +90,18 @@
             <groupId>com.typesafe.akka</groupId>
             <artifactId>akka-actor_2.12</artifactId>
             <version>${akka.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-params</artifactId>
+            <version>5.13.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+            <version>5.3.13</version>
         </dependency>
     </dependencies>
 
@@ -184,4 +215,22 @@
             </plugin>
         </plugins>
     </build>
+    <distributionManagement>
+        <snapshotRepository>
+            <id>sdc</id>
+            <url>http://10.0.82.220:8081/repository/maven-snapshots/</url>
+        </snapshotRepository>
+        <repository>
+            <id>sdc</id>
+            <url>http://10.0.82.220:8081/repository/maven-releases</url>
+        </repository>
+    </distributionManagement>
+
+    <repositories>
+        <repository>
+            <id>sdc</id>
+            <name>Repository</name>
+            <url>http://10.0.82.220:8081/repository/maven-public/</url>
+        </repository>
+    </repositories>
 </project>

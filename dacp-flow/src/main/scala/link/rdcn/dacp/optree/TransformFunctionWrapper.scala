@@ -289,3 +289,10 @@ case class RepositoryOperator(functionID: String) extends TransformFunctionWrapp
       .executeOperator(functionID, inputs, ctx)
   }
 }
+
+case class RepositoryBundle() extends TransformFunctionWrapper {
+
+  override def toJson: JSONObject = ???
+
+  override def applyToDataFrames(inputs: Seq[DataFrame], ctx: FlowExecutionContext): DataFrame = ???
+}
