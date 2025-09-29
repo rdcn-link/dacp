@@ -7,17 +7,25 @@
         <version>0.5.0-20250928</version>
     </parent>
 
-    <artifactId>dacp-recipe</artifactId>
+    <artifactId>dacp-server</artifactId>
     <packaging>jar</packaging>
 
-    <name>dacp-recipe</name>
+    <name>dacp-server</name>
     <url>http://maven.apache.org</url>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <scala.version>2.12.8</scala.version>
+        <akka.version>2.5.32</akka.version>
+        <akka.http.version>10.1.15</akka.http.version>
     </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-library</artifactId>
+            <version>${scala.version}</version>
+        </dependency>
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
@@ -26,8 +34,74 @@
         </dependency>
         <dependency>
             <groupId>link.rdcn</groupId>
-            <artifactId>dftp-common</artifactId>
+            <artifactId>dacp-common</artifactId>
             <version>0.5.0-20250928</version>
+        </dependency>
+        <dependency>
+            <groupId>link.rdcn</groupId>
+            <artifactId>dacp-flow</artifactId>
+            <version>0.5.0-20250928</version>
+        </dependency>
+        <dependency>
+            <groupId>link.rdcn</groupId>
+            <artifactId>dftp-server</artifactId>
+            <version>0.5.0-20250928</version>
+        </dependency>
+        <dependency>
+            <groupId>link.rdcn</groupId>
+            <artifactId>dacp-client</artifactId>
+            <version>0.5.0-20250928</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>2.17.2</version>
+        </dependency>
+
+        <!-- Akka HTTP -->
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-http_2.12</artifactId> <!-- 更改为 _2.12 -->
+            <version>${akka.http.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.17.2</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.module</groupId>
+            <artifactId>jackson-module-scala_2.12</artifactId>
+            <version>2.17.2</version>
+        </dependency>
+
+
+        <!-- Akka Stream -->
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-stream_2.12</artifactId> <!-- 更改为 _2.12 -->
+            <version>${akka.version}</version>
+        </dependency>
+
+        <!-- Akka Actor (Akka HTTP和Akka Stream的传递依赖) -->
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-actor_2.12</artifactId>
+            <version>${akka.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-params</artifactId>
+            <version>5.13.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+            <version>5.3.13</version>
         </dependency>
     </dependencies>
 
