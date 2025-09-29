@@ -128,7 +128,7 @@ class FunctionWrapperTest {
     exitCode
   }
 
-  def ctx = new FlowExecutionContext {
+  def ctx: FlowExecutionContext = new FlowExecutionContext {
 
     override val pythonHome: String = ""
 
@@ -138,7 +138,7 @@ class FunctionWrapperTest {
 
     override def getRepositoryClient(): Option[OperatorRepository] = Some(new RepositoryClient("10.0.89.38", 8088))
 
-    override val fairdHome: String = getClass.getClassLoader.getResource("").getPath
+    override val fairdHome: String = ???
 
     override def loadRemoteDataFrame(baseUrl: String, path: String, credentials: Credentials): Option[DataFrame] = ???
   }

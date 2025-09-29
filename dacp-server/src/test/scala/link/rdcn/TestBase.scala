@@ -42,7 +42,7 @@ object TestBase {
   val genToken = () => UUID.randomUUID().toString
   val resourceUrl = getClass.getProtectionDomain.getCodeSource.getLocation
   val testClassesDir = new File(resourceUrl.toURI)
-  val demoBaseDir = Paths.get( "src", "test", "demo").toString
+  val demoBaseDir = Paths.get( "src", "test", "resources").toString
 
   def genModel: Model = {
     ModelFactory.createDefaultModel()

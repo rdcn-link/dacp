@@ -4,6 +4,7 @@ import link.rdcn.Logging
 import link.rdcn.struct.DefaultDataFrame
 
 import java.nio.file.{Files, Path}
+import java.util.concurrent.{CountDownLatch, TimeUnit}
 
 object DataFrameMountUtils extends Logging {
 
@@ -13,6 +14,7 @@ object DataFrameMountUtils extends Logging {
 
     val batchSource = new RowBatchFSSource(df, batchSize)
     val fs = new RowBatchFS(batchSource)
+    val mountLatch = new CountDownLatch(1)
 
     //创建临时挂载目录（确保该目录存在且为空）
     val mountDir = Files.createTempDirectory("fuse_mount_test")
@@ -23,17 +25,20 @@ object DataFrameMountUtils extends Logging {
       try {
         // 阻塞挂载，直到卸载
         fs.mount(mountDir, true)
+        mountLatch.countDown()
+        logger.info(s"Successfully mounted FUSE at $mountDir")
       } catch {
         case e: Exception =>
           e.printStackTrace()
+          logger.error("Failed to mount FUSE file system!", e)
+          mountLatch.countDown()
       }
     }, "FuseMountThread")
 
-    mountThread.setDaemon(true)
     mountThread.start()
 
     // 等待挂载生效（根据情况等待几秒）
-    waitForMountReady(mountDir)
+    waitForMountReady(mountLatch)
 
     // 访问挂载目录，列出文件名并读取第一个批次文件内容打印
     val files = mountDir.toFile.listFiles()
@@ -52,20 +57,8 @@ object DataFrameMountUtils extends Logging {
     mountDir.toFile.deleteOnExit()
   }
 
-  private def waitForMountReady(mountPath: Path, timeoutSeconds: Int = 3): Unit = {
-    val startTime = System.currentTimeMillis()
-    val timeoutMillis = timeoutSeconds * 1000
-
-    while ( {
-      val files = mountPath.toFile.listFiles()
-      (files == null || files.isEmpty) && (System.currentTimeMillis() - startTime < timeoutMillis)
-    }) {
-      logger.info(s"Waiting for mount at $mountPath to become ready...")
-      Thread.sleep(500)
-    }
-
-    val files = mountPath.toFile.listFiles()
-    if (files == null || files.isEmpty)
-      throw new RuntimeException(s"Mount directory $mountPath is not ready or still empty after $timeoutSeconds seconds.")
+  private def waitForMountReady(mountLatch: CountDownLatch, timeoutSeconds: Int = 3): Unit = {
+    if (!mountLatch.await(timeoutSeconds, TimeUnit.SECONDS))
+      throw new RuntimeException(s"Mount directory is not ready or still empty after $timeoutSeconds seconds.")
   }
 }
