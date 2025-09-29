@@ -112,7 +112,7 @@ object ClientDemo {
       val byteSize: Long = row.getAs[Long](3)
       //除此之外列值支持的类型还包括：Integer, Long, Float, Double, Boolean, byte[]
       //offerStream用于接受一个用户编写的处理blob InputStream的函数并确保其关闭
-      val path: Path = Paths.get(testClassesDir.getParentFile.getParentFile.getAbsolutePath, "src", "test", "demo", "data", "output", name)
+      val path: Path = Paths.get(testClassesDir.getParentFile.getParentFile.getAbsolutePath, "src", "test", "resources", "data", "output", name)
       blob.offerStream(inputStream => {
         val outputStream = new FileOutputStream(path.toFile)
         IOUtils.copy(inputStream, outputStream)
