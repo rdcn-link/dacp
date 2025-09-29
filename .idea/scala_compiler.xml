@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="ScalaCompilerConfiguration">
-    <profile name="Maven 1" modules="dacp,dacp-client,dacp-common,dacp-core,dacp-flow,dacp-recipe,dacp-recipe-impl,dacp-server,faird-plugin-impl" />
-  </component>
-</project>

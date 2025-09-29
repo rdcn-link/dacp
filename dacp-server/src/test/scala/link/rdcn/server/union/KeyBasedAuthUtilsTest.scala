@@ -1,6 +1,6 @@
 package link.rdcn.server.union
 
-import link.rdcn.dacp.server.KeyBasedAuthUtils.{generateKeyPair, signData, verifySignature}
+import link.rdcn.dacp.KeyBasedAuthUtils.{generateKeyPair, signData, verifySignature}
 import org.junit.jupiter.api.Test
 
 import java.util.Base64
