@@ -135,12 +135,12 @@ class UnionServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPr
     request.getActionName() match {
       case name if name.startsWith("/getDataSetMetaData/") => {
         val prefix: String = "/getDataSetMetaData/"
-        val model: Option[Model] = endpoints.flatMap { endpoint =>
+        val dataSetModel: Option[Model] = endpoints.flatMap { endpoint =>
           endpointClientsMap.get(endpoint.url).map { client =>
             client.getDataSetMetaData(name.replaceFirst(prefix, ""))
           }
         }.headOption
-        model match {
+        dataSetModel match {
           case Some(model) =>
             val writer = new StringWriter();
             model.write(writer, "RDF/XML");
@@ -159,17 +159,8 @@ class UnionServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPr
         dataFrameDocument match {
           case Some(document) =>
             val schema = StructType.empty.add("url", StringType).add("alias", StringType).add("title", StringType).add("dataFrameTitle", StringType)
-            val dataStreamSource: DataStreamSource = dataProvider.getDataStreamSource(dataFrameName)
-            var structType = dataStreamSource.schema
-            if (structType.isEmpty()) {
-              val dataStreamSource: DataStreamSource = dataProvider.getDataStreamSource(dataFrameName)
-              val iter = dataStreamSource.iterator
-              if (iter.hasNext) {
-                structType = DataUtils.inferSchemaFromRow(iter.next())
-              }
-            }
             val stream =
-              structType.columns.map(col => col.name).map(name => Seq(document.getColumnURL(name).getOrElse("")
+              getSchema(dataFrameName).columns.map(col => col.name).map(name => Seq(document.getColumnURL(name).getOrElse("")
                 , document.getColumnAlias(name).getOrElse(""), document.getColumnTitle(name).getOrElse(""), document.getDataFrameTitle().getOrElse("")))
               .map(seq => link.rdcn.struct.Row.fromSeq(seq))
             val ja = new JSONArray()
@@ -179,11 +170,20 @@ class UnionServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPr
         }
       case name if name.startsWith("/getStatistics/") =>
         val prefix: String = "/getStatistics/"
-        val statistics = dataProvider.getStatistics(name.replaceFirst(prefix, ""))
-        val jo = new JSONObject()
-        jo.put("byteSize", statistics.byteSize)
-        jo.put("rowCount", statistics.rowCount)
-        response.send(jo.toString().getBytes("UTF-8"))
+        val dataFrameName: String = name.replaceFirst(prefix, "")
+        val dataFrameStatistics: Option[DataFrameStatistics] = endpoints.flatMap { endpoint =>
+          endpointClientsMap.get(endpoint.url).map { client =>
+            client.getStatistics(dataFrameName)
+          }
+        }.headOption
+        dataFrameStatistics match {
+          case Some(statistics) =>
+            val jo = new JSONObject()
+            jo.put("byteSize", statistics.byteSize)
+            jo.put("rowCount", statistics.rowCount)
+            response.send(jo.toString().getBytes("UTF-8"))
+          case None => response.sendError(404, "DataSetMetaData Not Found")
+        }
       case name if name.startsWith("getDataFrameSize") =>
         val prefix: String = "/getDataFrameSize/"
         val dataFrameSize: Option[Long] = endpoints.flatMap { endpoint =>

@@ -261,7 +261,7 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
     jo.toString()
   }
 
-  private def getSchema(dataFrameName: String): StructType = {
+  protected def getSchema(dataFrameName: String): StructType = {
     val dataStreamSource: DataStreamSource = dataProvider.getDataStreamSource(dataFrameName)
     var structType = dataStreamSource.schema
     if (structType.isEmpty()) {
