@@ -14,6 +14,7 @@ import org.json.{JSONArray, JSONObject}
 import java.io.{File, StringReader}
 import scala.collection.JavaConverters.asScalaIteratorConverter
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 /**
  * @Author renhao
@@ -25,18 +26,32 @@ class DacpClient(host: String, port: Int, useTLS: Boolean = false) extends DftpC
 
   override val prefixSchema: String = "dacp"
 
-  def listDataSetNames(): Seq[String] = getDataSetInfoMap.keys.toSeq
+  def listDataSetNames(): Seq[String] = {
+    val result = ArrayBuffer[String]()
+    get(dacpUrlPrefix + "/listDataSets").mapIterator(rows => rows.foreach(row => {
+      result+=(row.getAs[String](0))
+    }))
+    result
+  }
 
   def listDataFrameNames(dsName: String): Seq[String] = {
-    val url = getDataSetInfoMap.get(dsName).getOrElse(return Seq.empty)._3.url
-    get(url).collect().map(row => row.getAs[String](0))
+    val allDataSets = get(dacpUrlPrefix + "/listDataSets")
+      .mapIterator(rows => rows.find(row => row.getAs[String](0) == dsName))
+    allDataSets.map { row =>
+      val url = row.getAs[DFRef](3).url
+      get(url).collect().map(dataRow => dataRow.getAs[String](0))
+    }.getOrElse(Seq.empty)
   }
 
   def getDataSetMetaData(dsName: String): Model = {
     val model = ModelFactory.createDefaultModel()
-    val rdfString = getDataSetInfoMap.get(dsName).getOrElse(return model)._1
-    val reader = new StringReader(rdfString)
-    model.read(reader, null, "RDF/XML")
+    val rdfString = new String(doAction(s"/getDataSetMetaData/${dsName}"), "UTF-8").trim
+    rdfString match {
+      case s if s.nonEmpty =>
+        val reader = new StringReader(s)
+        model.read(reader, null, "RDF/XML")
+      case _ =>
+    }
     model
   }
 
@@ -99,7 +114,12 @@ class DacpClient(host: String, port: Int, useTLS: Boolean = false) extends DftpC
   }
 
   def getDocument(dataFrameName: String): DataFrameDocument = {
-    val jsonString: String = getDataFrameInfoMap.get(dataFrameName).map(_._2).getOrElse("[]")
+    val jsonString: String = {
+      new String(doAction(s"/getDocument/${dataFrameName}"), "UTF-8").trim match {
+        case s if s.nonEmpty => s
+        case _ => "[]"
+      }
+    }
     val jo = new JSONArray(jsonString).getJSONObject(0)
     new DataFrameDocument {
       override def getSchemaURL(): Option[String] = Some("[SchemaURL defined by provider]")
@@ -115,7 +135,13 @@ class DacpClient(host: String, port: Int, useTLS: Boolean = false) extends DftpC
   }
 
   def getStatistics(dataFrameName: String): DataFrameStatistics = {
-    val jo = new JSONObject(getDataFrameInfoMap.get(dataFrameName).map(_._4).getOrElse(""))
+    val jsonString: String = {
+      new String(doAction(s"/getStatistics/${dataFrameName}"), "UTF-8").trim match {
+        case s if s.isEmpty => ""
+        case s => s
+      }
+    }
+    val jo = new JSONObject(jsonString)
     new DataFrameStatistics {
       override def rowCount: Long = jo.getLong("rowCount")
 
@@ -124,53 +150,35 @@ class DacpClient(host: String, port: Int, useTLS: Boolean = false) extends DftpC
   }
 
   def getDataFrameSize(dataFrameName: String): Long = {
-    getDataFrameInfoMap.get(dataFrameName).map(_._1).getOrElse(0L)
+      new String(doAction(s"/getDataFrameSize/${dataFrameName}"), "UTF-8").trim match {
+        case s if s.nonEmpty => s.asInstanceOf[Long]
+        case _ => 0L
+      }
   }
 
   def getHostInfo: Map[String, String] = {
-    val jo = new JSONObject(getHostInfoMap().head._2._1)
+    val result = mutable.Map[String, String]()
+    get(dacpUrlPrefix + "/listHostInfo").mapIterator(iter => iter.foreach(row => {
+      result.put(row.getAs[String](0), row.getAs[String](1))
+    }))
+    val jo = new JSONObject(result.toMap.head._2)
     jo.keys().asScala.map { key =>
       key -> jo.getString(key)
     }.toMap
   }
 
   def getServerResourceInfo: Map[String, String] = {
-    val jo = new JSONObject(getHostInfoMap().head._2._2)
+    val result = mutable.Map[String, String]()
+    get(dacpUrlPrefix + "/listHostInfo").mapIterator(iter => iter.foreach(row => {
+      result.put(row.getAs[String](0), row.getAs[String](2))
+    }))
+    val jo = new JSONObject(result.toMap.head._2)
     jo.keys().asScala.map { key =>
       key -> jo.getString(key)
     }.toMap
   }
 
   private val dacpUrlPrefix: String = s"$prefixSchema://$host:$port"
-
-  //dataSetName -> (metaData, dataSetInfo, dataFrames)
-  def getDataSetInfoMap: Map[String, (String, String, DFRef)] = {
-    val result = mutable.Map[String, (String, String, DFRef)]()
-    get(dacpUrlPrefix + "/listDataSets").mapIterator(rows => rows.foreach(row => {
-      result.put(row.getAs[String](0), (row.getAs[String](1), row.getAs[String](2), row.getAs[DFRef](3)))
-    }))
-    result.toMap
-  }
-
-  //dataFrameName -> (size,document,schema,statistic,dataFrame)
-  def getDataFrameInfoMap: Map[String, (Long, String, String, String, DFRef)] = {
-    val result = mutable.Map[String, (Long, String, String, String, DFRef)]()
-    getDataSetInfoMap.values.map(v => get(v._3.url)).foreach(df => {
-      df.mapIterator(iter => iter.foreach(row => {
-        result.put(row.getAs[String](0), (row.getAs[Long](1), row.getAs[String](2), row.getAs[String](3), row.getAs[String](4), row.getAs[DFRef](5)))
-      }))
-    })
-    result.toMap
-  }
-
-  //hostName -> (hostInfo, resourceInfo)
-  def getHostInfoMap(): Map[String, (String, String)] = {
-    val result = mutable.Map[String, (String, String)]()
-    get(dacpUrlPrefix + "/listHostInfo").mapIterator(iter => iter.foreach(row => {
-      result.put(row.getAs[String](0), (row.getAs[String](1), row.getAs[String](2)))
-    }))
-    result.toMap
-  }
 }
 
 object DacpClient {

@@ -55,7 +55,7 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
     }
 
     override def doAction(request: ActionRequest, response: ActionResponse): Unit =
-      response.sendError(501, s"${request.getActionName()} Not Implemented")
+      DacpServer.this.doAction(request, response)
   }
   private val server: DacpServerProducer = new DacpServerProducer(authProviderWithKey, dftpMethodService)
 
@@ -129,6 +129,29 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
         }
     }
   }
+
+  def doAction(request: ActionRequest, response: ActionResponse): Unit = {
+    request.getActionName() match {
+      case name if name.startsWith("/getDataSetMetaData/") =>
+        val model: Model = ModelFactory.createDefaultModel
+        val prefix: String = "/getDataSetMetaData/"
+        dataProvider.getDataSetMetaData(name.replaceFirst(prefix, ""), model)
+        val writer = new StringWriter();
+        model.write(writer, "RDF/XML");
+        response.send(writer.toString.getBytes("UTF-8"))
+      case name if name.startsWith("/getDocument/") =>
+        val prefix: String = "/getDocument/"
+        response.send(getDataFrameDocumentJsonString(name.replaceFirst(prefix, "")).getBytes("UTF-8"))
+      case name if name.startsWith("/getStatistics/") =>
+        val prefix: String = "/getStatistics/"
+        response.send(getDataFrameStatisticsString(name.replaceFirst(prefix, "")).getBytes("UTF-8"))
+      case name if name.startsWith("getDataFrameSize") =>
+        val prefix: String = "/getDataFrameSize/"
+        response.send(dataProvider.getDataStreamSource(name.replaceFirst(prefix, "")).rowCount.toString.getBytes("UTF-8"))
+      case otherPath => response.sendError(400, s"Action $otherPath Invalid")
+      }
+    }
+
 
   /**
    * 输入链接（实现链接）： dacp://0.0.0.0:3101/listDataSets

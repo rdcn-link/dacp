@@ -20,7 +20,6 @@ object ServerDemo {
   def main(args: Array[String]): Unit = {
     val provider = new TestDemoProvider
     val fairdHome = Paths.get(getResourcePath("tls")).toString
-//    val configFile = new File(s"$fairdHome" + File.separator + "conf" + File.separator + "faird.conf")
     val certPath = "server.crt"
     val keyPath = "server.pem"
     val tlsCertFile: File = Paths.get(fairdHome, certPath).toFile

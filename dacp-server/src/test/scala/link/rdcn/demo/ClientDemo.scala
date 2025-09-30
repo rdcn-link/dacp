@@ -81,25 +81,25 @@ object ClientDemo {
      * 获得数据帧的Document，包含由Provider定义的SchemaURI等信息
      * 用户可以控制没有信息时输出的字段
      */
-        println("--------------打印数据帧Document--------------")
-        val dataFrameDocument: DataFrameDocument = dc.getDocument("/bin")
-        val schemaURL: String = dataFrameDocument.getSchemaURL().getOrElse("schemaURL not found")
-        val columnURL: String = dataFrameDocument.getColumnURL("file_name").getOrElse("columnURL not found")
-        val columnAlias: String = dataFrameDocument.getColumnAlias("file_name").getOrElse("columnAlias not found")
-        val columnTitle: String = dataFrameDocument.getColumnTitle("file_name").getOrElse("columnTitle not found")
-        println(schemaURL)
-        println(columnURL)
-        println(columnAlias)
-        println(columnTitle)
-        println(dfBin.schema)
+    println("--------------打印数据帧Document--------------")
+    val dataFrameDocument: DataFrameDocument = dc.getDocument("/bin")
+    val schemaURL: String = dataFrameDocument.getSchemaURL().getOrElse("schemaURL not found")
+    val columnURL: String = dataFrameDocument.getColumnURL("file_name").getOrElse("columnURL not found")
+    val columnAlias: String = dataFrameDocument.getColumnAlias("file_name").getOrElse("columnAlias not found")
+    val columnTitle: String = dataFrameDocument.getColumnTitle("file_name").getOrElse("columnTitle not found")
+    println(schemaURL)
+    println(columnURL)
+    println(columnAlias)
+    println(columnTitle)
+    println(dfBin.schema)
 
-        //获得数据帧大小
-        println("--------------打印数据帧行数和大小--------------")
-        val dataFrameStatistics: DataFrameStatistics = dc.getStatistics("/bin")
-        val dataFrameRowCount: Long = dataFrameStatistics.rowCount
-        val dataFrameSize: Long = dataFrameStatistics.byteSize
-        println(dataFrameRowCount)
-        println(dataFrameSize)
+    //获得数据帧大小
+    println("--------------打印数据帧行数和大小--------------")
+    val dataFrameStatistics: DataFrameStatistics = dc.getStatistics("/bin")
+    val dataFrameRowCount: Long = dataFrameStatistics.rowCount
+    val dataFrameSize: Long = dataFrameStatistics.byteSize
+    println(dataFrameRowCount)
+    println(dataFrameSize)
 
     //可以对数据帧进行操作 比如foreach 每行数据为一个Row对象，可以通过Tuple风格访问每一列的值
     println("--------------打印非结构化数据文件列表数据帧--------------")
