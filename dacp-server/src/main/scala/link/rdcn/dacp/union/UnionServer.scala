@@ -10,13 +10,15 @@ import link.rdcn.dacp.server.{CookRequest, CookResponse, DacpServer}
 import link.rdcn.dacp.struct.{DataFrameDocument, DataFrameStatistics}
 import link.rdcn.dacp.user.{AuthProvider, DataOperationType, KeyAuthProvider, KeyCredentials}
 import link.rdcn.operation.{SourceOp, TransformOp}
-import link.rdcn.server.{GetRequest, GetResponse}
-import link.rdcn.struct.{DFRef, DataFrame, DataStreamSource, DefaultDataFrame, Row}
+import link.rdcn.server.{ActionRequest, ActionResponse, GetRequest, GetResponse}
+import link.rdcn.struct.ValueType.StringType
+import link.rdcn.struct.{DFRef, DataFrame, DataStreamSource, DefaultDataFrame, Row, StructType}
 import link.rdcn.user.{Credentials, UserPrincipal}
-import link.rdcn.util.CodecUtils
-import org.apache.jena.rdf.model.Model
-import org.json.JSONObject
+import link.rdcn.util.{CodecUtils, DataUtils}
+import org.apache.jena.rdf.model.{Model, ModelFactory}
+import org.json.{JSONArray, JSONObject}
 
+import java.io.StringWriter
 import java.util
 import java.time.format.DateTimeFormatter
 import java.time.{ZoneId, ZonedDateTime}
@@ -72,24 +74,21 @@ class UnionServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPr
     val transformTree = request.getTransformTree
     val userPrincipal = request.getRequestUserPrincipal()
 
-    transformTree match
-    {
+    transformTree match {
       case s: SourceOp =>
         val baseUrlAndPath: (String, String) = UrlValidator.extractBaseUrlAndPath(s.dataFrameUrl) match {
           case Right((baseUrl, path)) => (baseUrl, path)
           case Left(message) => (this.getBaseUrl(), s.dataFrameUrl)
         }
-        if (baseUrlAndPath._1 == this.getBaseUrl())
-        {
+        if (baseUrlAndPath._1 == this.getBaseUrl()) {
           baseUrlAndPath._2 match {
             case "/listDataSets" => response.sendDataFrame(doListDataSets())
             case "/listHostInfo" => response.sendDataFrame(doListHostInfo())
             case "/listDataFrames" => response.sendDataFrame(doListDataFrames(s.dataFrameUrl))
             case other => response.sendError(404, s"not found resource ${this.getBaseUrl()}${other}")
           }
-        }else
-        {
-          if(authProviderWithKey.checkPermission(userPrincipal, baseUrlAndPath._2)){
+        } else {
+          if (authProviderWithKey.checkPermission(userPrincipal, baseUrlAndPath._2)) {
             try {
               val client = endpointClientsMap.getOrElse(baseUrlAndPath._1
                 , throw new Exception(s"Access to FaridServer ${s.dataFrameUrl} is denied"))
@@ -99,12 +98,12 @@ class UnionServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPr
                 logger.error(e)
                 response.sendError(500, e.getMessage)
             }
-          }else response.sendError(403, s"access ${s.dataFrameUrl} forbidden")
+          } else response.sendError(403, s"access ${s.dataFrameUrl} forbidden")
         }
       case other: TransformOp =>
         other.sourceUrlList.find(url => {
           !authProviderWithKey.checkPermission(userPrincipal, getUrlPath(url))
-        })match {
+        }) match {
           case Some(url) => response.sendError(403, s"access ${url} forbidden")
           case None => response.sendDataFrame(createRecipe(other).execute())
         }
@@ -112,7 +111,7 @@ class UnionServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPr
   }
 
   override def doGet(request: GetRequest, response: GetResponse): Unit = {
-    if(Seq("/listDataSets", "/listHostInfo", "/listDataFrames").contains(request.getRequestURI())) super.doGet(request, response)
+    if (Seq("/listDataSets", "/listHostInfo", "/listDataFrames").contains(request.getRequestURI())) super.doGet(request, response)
     else response.sendError(404, s"not found resource ${this.getBaseUrl()}${request.getRequestURI()}")
   }
 
@@ -129,6 +128,75 @@ class UnionServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPr
 
       val signature = KeyBasedAuthUtils.signData(privateKey.get, CodecUtils.encodeString(jo.toString))
       KeyCredentials(this.getBaseUrl(), nonce, issueTime, issueTime + expirationTime, signature)
+    }
+  }
+
+  override def doAction(request: ActionRequest, response: ActionResponse): Unit = {
+    request.getActionName() match {
+      case name if name.startsWith("/getDataSetMetaData/") => {
+        val prefix: String = "/getDataSetMetaData/"
+        val model: Option[Model] = endpoints.flatMap { endpoint =>
+          endpointClientsMap.get(endpoint.url).map { client =>
+            client.getDataSetMetaData(name.replaceFirst(prefix, ""))
+          }
+        }.headOption
+        model match {
+          case Some(model) =>
+            val writer = new StringWriter();
+            model.write(writer, "RDF/XML");
+            response.send(writer.toString.getBytes("UTF-8"))
+          case None => response.sendError(404, "DataSetMetaData Not Found")
+        }
+      }
+      case name if name.startsWith("/getDocument/") =>
+        val prefix: String = "/getDocument/"
+        val dataFrameName: String = name.replaceFirst(prefix, "")
+        val dataFrameDocument: Option[DataFrameDocument] = endpoints.flatMap { endpoint =>
+          endpointClientsMap.get(endpoint.url).map { client =>
+            client.getDocument(dataFrameName)
+          }
+        }.headOption
+        dataFrameDocument match {
+          case Some(document) =>
+            val schema = StructType.empty.add("url", StringType).add("alias", StringType).add("title", StringType).add("dataFrameTitle", StringType)
+            val dataStreamSource: DataStreamSource = dataProvider.getDataStreamSource(dataFrameName)
+            var structType = dataStreamSource.schema
+            if (structType.isEmpty()) {
+              val dataStreamSource: DataStreamSource = dataProvider.getDataStreamSource(dataFrameName)
+              val iter = dataStreamSource.iterator
+              if (iter.hasNext) {
+                structType = DataUtils.inferSchemaFromRow(iter.next())
+              }
+            }
+            val stream =
+              structType.columns.map(col => col.name).map(name => Seq(document.getColumnURL(name).getOrElse("")
+                , document.getColumnAlias(name).getOrElse(""), document.getColumnTitle(name).getOrElse(""), document.getDataFrameTitle().getOrElse("")))
+              .map(seq => link.rdcn.struct.Row.fromSeq(seq))
+            val ja = new JSONArray()
+            stream.map(_.toJsonObject(schema)).foreach(ja.put(_))
+            response.send(ja.toString().getBytes("UTF-8"))
+          case None => response.sendError(404, "DataSetMetaData Not Found")
+        }
+      case name if name.startsWith("/getStatistics/") =>
+        val prefix: String = "/getStatistics/"
+        val statistics = dataProvider.getStatistics(name.replaceFirst(prefix, ""))
+        val jo = new JSONObject()
+        jo.put("byteSize", statistics.byteSize)
+        jo.put("rowCount", statistics.rowCount)
+        response.send(jo.toString().getBytes("UTF-8"))
+      case name if name.startsWith("getDataFrameSize") =>
+        val prefix: String = "/getDataFrameSize/"
+        val dataFrameSize: Option[Long] = endpoints.flatMap { endpoint =>
+          endpointClientsMap.get(endpoint.url).map { client =>
+            dataProvider.getDataStreamSource(name.replaceFirst(prefix, "")).rowCount
+          }
+        }.headOption
+        dataFrameSize match {
+          case Some(dataFrameSize) =>
+            response.send(dataFrameSize.toString.getBytes("UTF-8"))
+          case None => response.sendError(404, "DataSetMetaData Not Found")
+        }
+      case otherPath => response.sendError(400, s"Action $otherPath Invalid")
     }
   }
 
@@ -155,8 +223,7 @@ class UnionServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPr
                              transformOp: TransformOp,
                              executionNodeBaseUrl: String,
                              attributes: Map[String, String] = Map()
-                           )
-  {
+                           ) {
     def execute(): DataFrame = {
       val client = endpointClientsMap.getOrElse(executionNodeBaseUrl
         , throw new Exception(s"Access to FaridServer ${executionNodeBaseUrl} is denied"))
