@@ -134,66 +134,45 @@ class UnionServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPr
   override def doAction(request: ActionRequest, response: ActionResponse): Unit = {
     request.getActionName() match {
       case name if name.startsWith("/getDataSetMetaData/") => {
-        val prefix: String = "/getDataSetMetaData/"
-        val dataSetModel: Option[Model] = endpoints.flatMap { endpoint =>
+        val dataSetModelBytes: Option[Array[Byte]] = endpoints.flatMap { endpoint =>
           endpointClientsMap.get(endpoint.url).map { client =>
-            client.getDataSetMetaData(name.replaceFirst(prefix, ""))
+            client.doAction(name)
           }
         }.headOption
-        dataSetModel match {
-          case Some(model) =>
-            val writer = new StringWriter();
-            model.write(writer, "RDF/XML");
-            response.send(writer.toString.getBytes("UTF-8"))
+        dataSetModelBytes match {
+          case Some(bytes) => response.send(bytes)
           case None => response.sendError(404, "DataSetMetaData Not Found")
         }
       }
       case name if name.startsWith("/getDocument/") =>
-        val prefix: String = "/getDocument/"
-        val dataFrameName: String = name.replaceFirst(prefix, "")
-        val dataFrameDocument: Option[DataFrameDocument] = endpoints.flatMap { endpoint =>
+        val dataFrameDocumentBytes: Option[Array[Byte]] = endpoints.flatMap { endpoint =>
           endpointClientsMap.get(endpoint.url).map { client =>
-            client.getDocument(dataFrameName)
+            client.doAction(name)
           }
         }.headOption
-        dataFrameDocument match {
-          case Some(document) =>
-            val schema = StructType.empty.add("url", StringType).add("alias", StringType).add("title", StringType).add("dataFrameTitle", StringType)
-            val stream =
-              getSchema(dataFrameName).columns.map(col => col.name).map(name => Seq(document.getColumnURL(name).getOrElse("")
-                , document.getColumnAlias(name).getOrElse(""), document.getColumnTitle(name).getOrElse(""), document.getDataFrameTitle().getOrElse("")))
-              .map(seq => link.rdcn.struct.Row.fromSeq(seq))
-            val ja = new JSONArray()
-            stream.map(_.toJsonObject(schema)).foreach(ja.put(_))
-            response.send(ja.toString().getBytes("UTF-8"))
+        dataFrameDocumentBytes match {
+          case Some(bytes) => response.send(bytes)
           case None => response.sendError(404, "DataSetMetaData Not Found")
         }
       case name if name.startsWith("/getStatistics/") =>
-        val prefix: String = "/getStatistics/"
-        val dataFrameName: String = name.replaceFirst(prefix, "")
-        val dataFrameStatistics: Option[DataFrameStatistics] = endpoints.flatMap { endpoint =>
+        val dataFrameStatisticsBytes: Option[Array[Byte]] = endpoints.flatMap { endpoint =>
           endpointClientsMap.get(endpoint.url).map { client =>
-            client.getStatistics(dataFrameName)
+            client.doAction(name)
           }
         }.headOption
-        dataFrameStatistics match {
-          case Some(statistics) =>
-            val jo = new JSONObject()
-            jo.put("byteSize", statistics.byteSize)
-            jo.put("rowCount", statistics.rowCount)
-            response.send(jo.toString().getBytes("UTF-8"))
+        dataFrameStatisticsBytes match {
+          case Some(bytes) => response.send(bytes)
           case None => response.sendError(404, "DataSetMetaData Not Found")
         }
       case name if name.startsWith("getDataFrameSize") =>
-        val prefix: String = "/getDataFrameSize/"
-        val dataFrameSize: Option[Long] = endpoints.flatMap { endpoint =>
+        val dataFrameSizeBytes: Option[Array[Byte]] = endpoints.flatMap { endpoint =>
           endpointClientsMap.get(endpoint.url).map { client =>
-            dataProvider.getDataStreamSource(name.replaceFirst(prefix, "")).rowCount
+            client.doAction(name)
           }
         }.headOption
-        dataFrameSize match {
-          case Some(dataFrameSize) =>
-            response.send(dataFrameSize.toString.getBytes("UTF-8"))
+        dataFrameSizeBytes match {
+          case Some(bytes) =>
+            response.send(bytes)
           case None => response.sendError(404, "DataSetMetaData Not Found")
         }
       case otherPath => response.sendError(400, s"Action $otherPath Invalid")

@@ -122,15 +122,15 @@ class DacpClient(host: String, port: Int, useTLS: Boolean = false) extends DftpC
     }
     val jo = new JSONArray(jsonString).getJSONObject(0)
     new DataFrameDocument {
-      override def getSchemaURL(): Option[String] = Some("[SchemaURL defined by provider]")
+      override def getSchemaURL(): Option[String] = Some("SchemaUrl")
 
-      override def getDataFrameTitle(): Option[String] = Some(jo.getString("title"))
+      override def getDataFrameTitle(): Option[String] = Some(jo.getString("DataFrameTitle"))
 
-      override def getColumnURL(colName: String): Option[String] = Some(jo.getString("url"))
+      override def getColumnURL(colName: String): Option[String] = Some(jo.getString("ColumnUrl"))
 
-      override def getColumnAlias(colName: String): Option[String] = Some(jo.getString("alias"))
+      override def getColumnAlias(colName: String): Option[String] = Some(jo.getString("ColumnAlias"))
 
-      override def getColumnTitle(colName: String): Option[String] = Some(jo.getString("title"))
+      override def getColumnTitle(colName: String): Option[String] = Some(jo.getString("ColumnTitle"))
     }
   }
 
