@@ -133,47 +133,18 @@ class UnionServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPr
 
   override def doAction(request: ActionRequest, response: ActionResponse): Unit = {
     request.getActionName() match {
-      case name if name.startsWith("/getDataSetMetaData/") => {
-        val dataSetModelBytes: Option[Array[Byte]] = endpoints.flatMap { endpoint =>
+      case name if name.startsWith("/getDataSetMetaData/") ||
+        name.startsWith("/getDocument/") ||
+        name.startsWith("/getStatistics/") ||
+        name.startsWith("/getDataFrameSize/") =>
+        val resultBytes: Option[Array[Byte]] = endpoints.flatMap { endpoint =>
           endpointClientsMap.get(endpoint.url).map { client =>
             client.doAction(name)
           }
         }.headOption
-        dataSetModelBytes match {
+        resultBytes match {
           case Some(bytes) => response.send(bytes)
-          case None => response.sendError(404, "DataSetMetaData Not Found")
-        }
-      }
-      case name if name.startsWith("/getDocument/") =>
-        val dataFrameDocumentBytes: Option[Array[Byte]] = endpoints.flatMap { endpoint =>
-          endpointClientsMap.get(endpoint.url).map { client =>
-            client.doAction(name)
-          }
-        }.headOption
-        dataFrameDocumentBytes match {
-          case Some(bytes) => response.send(bytes)
-          case None => response.sendError(404, "DataSetMetaData Not Found")
-        }
-      case name if name.startsWith("/getStatistics/") =>
-        val dataFrameStatisticsBytes: Option[Array[Byte]] = endpoints.flatMap { endpoint =>
-          endpointClientsMap.get(endpoint.url).map { client =>
-            client.doAction(name)
-          }
-        }.headOption
-        dataFrameStatisticsBytes match {
-          case Some(bytes) => response.send(bytes)
-          case None => response.sendError(404, "DataSetMetaData Not Found")
-        }
-      case name if name.startsWith("getDataFrameSize") =>
-        val dataFrameSizeBytes: Option[Array[Byte]] = endpoints.flatMap { endpoint =>
-          endpointClientsMap.get(endpoint.url).map { client =>
-            client.doAction(name)
-          }
-        }.headOption
-        dataFrameSizeBytes match {
-          case Some(bytes) =>
-            response.send(bytes)
-          case None => response.sendError(404, "DataSetMetaData Not Found")
+          case None => response.sendError(404, s"$name Not Found")
         }
       case otherPath => response.sendError(400, s"Action $otherPath Invalid")
     }
