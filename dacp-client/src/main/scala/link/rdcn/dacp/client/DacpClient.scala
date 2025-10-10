@@ -4,9 +4,10 @@ import link.rdcn.client.{DftpClient, RemoteDataFrameProxy, UrlValidator}
 import link.rdcn.dacp.optree.{LangTypeV2, RepositoryOperator, TransformFunctionWrapper, TransformerNode}
 import link.rdcn.dacp.recipe.{ExecutionResult, Flow, FlowPath, RepositoryNode, SourceNode, Transformer11, Transformer21}
 import link.rdcn.dacp.struct.{CookTicket, DataFrameDocument, DataFrameStatistics}
+import link.rdcn.dacp.user.KeyCredentials
 import link.rdcn.operation.{DataFrameCall11, DataFrameCall21, SerializableFunction, SourceOp, TransformOp}
 import link.rdcn.struct.{ClosableIterator, DFRef, DataFrame, DefaultDataFrame, Row, StructType}
-import link.rdcn.user.Credentials
+import link.rdcn.user.{AnonymousCredentials, Credentials, TokenAuth, UsernamePassword}
 import org.apache.arrow.flight.Ticket
 import org.apache.jena.rdf.model.{Model, ModelFactory}
 import org.json.{JSONArray, JSONObject}
@@ -189,7 +190,11 @@ object DacpClient {
     urlValidator.validate(url) match {
       case Right(parsed) =>
         val client = new DacpClient(parsed._1, parsed._2.getOrElse(3101))
-        client.login(credentials)
+        credentials match {
+          case AnonymousCredentials => client.login(credentials)
+          case c: UsernamePassword => client.login(AuthPlatform.authenticate(c))
+          case _ => throw new IllegalArgumentException(s"the $credentials is not supported")
+        }
         client
       case Left(err) =>
         throw new IllegalArgumentException(s"Invalid DACP URL: $err")
@@ -201,7 +206,11 @@ object DacpClient {
     urlValidator.validate(url) match {
       case Right(parsed) =>
         val client = new DacpClient(parsed._1, parsed._2.getOrElse(3101), true)
-        client.login(credentials)
+        credentials match {
+          case AnonymousCredentials => client.login(credentials)
+          case c: UsernamePassword => client.login(AuthPlatform.authenticate(c))
+          case _ => throw new IllegalArgumentException(s"the $credentials is not supported")
+        }
         client
       case Left(err) =>
         throw new IllegalArgumentException(s"Invalid DACP URL: $err")

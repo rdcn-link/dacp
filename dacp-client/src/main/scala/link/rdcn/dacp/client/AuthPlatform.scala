@@ -1,5 +1,6 @@
 package link.rdcn.dacp.client
 
+import link.rdcn.user.{TokenAuth, UsernamePassword}
 import org.json.JSONObject
 
 import java.net.URI
@@ -17,13 +18,10 @@ import java.util.Base64
  */
 object AuthPlatform {
 
-  private var clientToken: Option[String] = None
+  private val clientToken: Option[String] = Some("dacp-client"+":"+"819aa4e4f4bf256602a67a61cff984f5")
 
-
-
-  def main(args: Array[String]): Unit = {
-    val clientToken =  "faird-client1"+":"+"tcqi54cnp3cewj94nd9uop2q"
-    val basic = "Basic " + Base64.getUrlEncoder().encodeToString(clientToken.getBytes())
+  def authenticate(usernamePassword: UsernamePassword): TokenAuth = {
+    val basic = "Basic " + Base64.getUrlEncoder().encodeToString(clientToken.get.getBytes())
 
     val paramMap = new JSONObject().put("username", "faird-user1")
       .put("password", "user1@cnic.cn")
@@ -38,6 +36,20 @@ object AuthPlatform {
       .build()
 
     val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
-    println(new JSONObject(response.body()).getString("data"))
+    TokenAuth(new JSONObject(response.body()).getString("data"))
+  }
+
+  def registerClient(clientId: String): String = {
+    val paramMap = new JSONObject()
+      .put("clientId", clientId)
+      .put("clientName", "dacp客户端")
+    val httpClient = HttpClient.newHttpClient()
+    val request = HttpRequest.newBuilder()
+      .uri(URI.create("https://api.opendatachain.cn/auth/client.save"))
+      .header("Content-Type", "application/json")
+      .POST(HttpRequest.BodyPublishers.ofString(paramMap.toString()))
+      .build()
+    val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+    new JSONObject(response.body()).getJSONObject("data").getString("clientSecret")
   }
 }
