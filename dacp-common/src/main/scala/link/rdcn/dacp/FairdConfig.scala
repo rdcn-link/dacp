@@ -14,7 +14,14 @@ import scala.beans.BeanProperty
  */
 //TODO 修改为scala风格，兼容spring IOC
 class FairdConfig() extends DftpConfig {
-  @BeanProperty var fairdHome: String = getClass.getClassLoader.getResource("").getPath
+  @BeanProperty var fairdHome: String = {
+    val resource = getClass.getClassLoader.getResource("")
+    if(resource != null) {
+      resource.getPath
+    }else{
+      System.getProperty("user.dir")
+    }
+  }
   @BeanProperty var hostName: String = s"${hostPosition}:${hostPort}"
   @BeanProperty var hostTitle: String = ""
   @BeanProperty var hostPosition: String = "0.0.0.0"

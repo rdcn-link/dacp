@@ -10,7 +10,6 @@
   <name>dacp</name>
   <url>http://maven.apache.org</url>
   <modules>
-    <module>dacp-recipe</module>
     <module>dacp-recipe-impl</module>
     <module>dacp-flow</module>
     <module>dacp-client</module>
