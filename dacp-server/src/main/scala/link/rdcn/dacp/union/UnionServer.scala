@@ -11,14 +11,12 @@ import link.rdcn.dacp.struct.{DataFrameDocument, DataFrameStatistics}
 import link.rdcn.dacp.user.{AuthProvider, DataOperationType, KeyAuthProvider, KeyCredentials}
 import link.rdcn.operation.{SourceOp, TransformOp}
 import link.rdcn.server.{ActionRequest, ActionResponse, GetRequest, GetResponse}
-import link.rdcn.struct.ValueType.StringType
 import link.rdcn.struct.{DFRef, DataFrame, DataStreamSource, DefaultDataFrame, Row, StructType}
 import link.rdcn.user.{Credentials, UserPrincipal}
 import link.rdcn.util.{CodecUtils, DataUtils}
 import org.apache.jena.rdf.model.{Model, ModelFactory}
 import org.json.{JSONArray, JSONObject}
 
-import java.io.StringWriter
 import java.util
 import java.time.format.DateTimeFormatter
 import java.time.{ZoneId, ZonedDateTime}

@@ -4,9 +4,13 @@ import link.rdcn.client.UrlValidator
 import link.rdcn.operation._
 import link.rdcn.struct.DataFrame
 import link.rdcn.user.TokenAuth
+import link.rdcn.dacp.optree.fifo.{BinaryFilePipe, RowFilePipe}
 import org.json.{JSONArray, JSONObject}
 
 import scala.collection.JavaConverters.asScalaBufferConverter
+import java.io.File
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
  * @Author renhao
@@ -43,6 +47,22 @@ object TransformTree {
         case "TransformerNode" => TransformerNode(TransformFunctionWrapper.fromJsonObject(parsed.getJSONObject("function")), inputs: _*)
       }
     }
+  }
+}
+
+case class RowFileSourceOp(filePath: String, sourcePath: String) {
+  private val rowFilePipe = RowFilePipe.createEmptyFile(new File(filePath))
+  def execute(ctx: ExecutionContext): DataFrame = {
+    rowFilePipe.fromExistFile(new File(sourcePath))
+    rowFilePipe.dataFrame()
+  }
+}
+
+case class BinaryFileSourceOp(filePath: String, sourcePath: String){
+  private val binaryFilePipe = BinaryFilePipe.createEmptyFile(new File(filePath))
+  def execute(ctx: ExecutionContext): DataFrame = {
+    binaryFilePipe.fromExistFile(new File(sourcePath))
+    binaryFilePipe.dataFrame()
   }
 }
 
@@ -87,8 +107,17 @@ case class TransformerNode(transformFunctionWrapper: TransformFunctionWrapper, i
       .put("function", transformFunctionWrapper.toJson)
       .put("input", ja)
   }
-
+  //a.py b.py c.py
   override def execute(ctx: ExecutionContext): DataFrame = {
-    transformFunctionWrapper.applyToDataFrames(inputs.map(_.execute(ctx)), ctx.asInstanceOf[FlowExecutionContext])
+    val flowCtx = ctx.asInstanceOf[FlowExecutionContext]
+    if(flowCtx.isAsyncEnabled){
+      val future = Future{
+        transformFunctionWrapper.applyToDataFrames(inputs.map(_.execute(ctx)), flowCtx)
+      }
+      flowCtx.registerAsyncResult(this, future)
+      DataFrame.empty()
+    }else{
+      transformFunctionWrapper.applyToDataFrames(inputs.map(_.execute(ctx)), flowCtx)
+    }
   }
 }

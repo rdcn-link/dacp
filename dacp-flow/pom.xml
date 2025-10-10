@@ -38,6 +38,12 @@
             <version>0.5.0-20250928</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.github.docker-java</groupId>
+            <artifactId>docker-java</artifactId>
+            <version>3.4.0</version>
+        </dependency>
+
 
         <!-- Akka HTTP -->
         <dependency>
