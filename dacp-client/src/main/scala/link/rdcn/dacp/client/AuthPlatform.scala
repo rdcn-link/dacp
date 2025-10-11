@@ -24,8 +24,8 @@ object AuthPlatform {
     val basic = "Basic " + Base64.getUrlEncoder().encodeToString(clientToken.get.getBytes())
 
     val paramMap = new JSONObject().put("username", "faird-user1")
-      .put("password", "user1@cnic.cn")
-      .put("grantType","password")
+      .put("password", usernamePassword.username)
+      .put("grantType", usernamePassword.password)
 
     val httpClient = HttpClient.newHttpClient()
     val request = HttpRequest.newBuilder()
