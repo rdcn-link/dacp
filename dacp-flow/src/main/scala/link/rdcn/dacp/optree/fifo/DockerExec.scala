@@ -79,7 +79,7 @@ object DockerExec {
   }
 
   // Array("python","op1.py")
-  def nonInteractiveExec(command: Array[String], containerId: String): Unit = {
+  def nonInteractiveExec(command: Array[String], containerId: String): String = {
     val config = DefaultDockerClientConfig.createDefaultConfigBuilder().build()
     val dockerClient: DockerClient = DockerClientBuilder.getInstance(config).build()
 
@@ -114,6 +114,7 @@ object DockerExec {
 
       println("命令执行结果:")
       println(output.toString())
+      output.toString()
 
     } finally {
       dockerClient.close()

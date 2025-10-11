@@ -1,13 +1,14 @@
 package link.rdcn.dacp.optree
 
-import jep.{SharedInterpreter, SubInterpreter}
+import jep.SubInterpreter
 import link.rdcn.operation.TransformOp
 import link.rdcn.struct.DataFrame
 import link.rdcn.user.Credentials
 
 import java.util.concurrent.ConcurrentHashMap
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success}
+import scala.concurrent.duration._
 
 /**
  * @Author renhao
@@ -23,7 +24,7 @@ trait FlowExecutionContext extends link.rdcn.operation.ExecutionContext {
 
   def registerAsyncResult(transformOp: TransformOp, future: Future[DataFrame]): Unit = {
     asyncResults.put(transformOp, future)
-
+    val resultDataFrame = Await.result(future, 1.minute)
     future.onComplete {
       case Success(df) =>
       case Failure(e) =>

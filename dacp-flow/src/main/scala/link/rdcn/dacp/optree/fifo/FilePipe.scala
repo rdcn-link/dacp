@@ -15,7 +15,7 @@ abstract class FilePipe(file: File) {
   def create(): Unit = {
     if (!file.exists()) {
       Runtime.getRuntime.exec(Array("mkfifo", file.getAbsolutePath)).waitFor()
-    } else throw new Exception(s"init RowFilePipe fail ${file.getAbsolutePath} exists")
+    }
   }
 
   def delete(): Unit = {
