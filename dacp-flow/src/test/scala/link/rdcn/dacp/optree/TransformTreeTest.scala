@@ -8,12 +8,11 @@ import org.junit.jupiter.api.Test
 
 import java.nio.file.Paths
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
 class TransformTreeTest {
   private val JYG_CONTAINER_NAME = "jyg-container"
-  private val JYG_IMAGE = "registry.cn-hangzhou.aliyuncs.com/cnic-piflow/siltdam-jyg:latest"
 
   private val HOST_DIR = "/data2/work/ncdc/faird/temp"
   private val CONTAINER_DIR = "/mnt/data"
@@ -44,7 +43,6 @@ class TransformTreeTest {
     val jo1 = new JSONObject()
     val commandArray1 = new JSONArray()
     commandArray1.put("python")
-//    commandArray1.put("ls /mnt")
     commandArray1.put(OP1_DIR)
     jo1.put("type", LangTypeV2.FILE_REPOSITORY_BUNDLE.name)
     jo1.put("command", commandArray1)
@@ -75,7 +73,7 @@ class TransformTreeTest {
         }
         val combinedFuture = for {
           _ <- future1
-    //      _ <- future2
+          _ <- future2
         } yield ()
         Thread.sleep(2000)
         // 阻塞主线程，直到 combinedFuture 完成，或者超时

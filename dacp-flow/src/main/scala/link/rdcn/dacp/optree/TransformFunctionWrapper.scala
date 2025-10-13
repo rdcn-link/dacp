@@ -325,14 +325,12 @@ case class FileRepositoryBundle(
 
   override def applyToDataFrames(inputs: Seq[DataFrame], ctx: FlowExecutionContext): DataFrame = {
     //允许指定运行容器，避免重复启动相同容器
-//    if(!DockerExec.isContainerRunning(containerName)){
-//      DockerExec.startContainer(hostPath.get, containerPath.get, containerName, imageName.get)
-//    }
+    if(!DockerExec.isContainerRunning(containerName)){
+      DockerExec.startContainer(hostPath.get, containerPath.get, containerName, imageName.get)
+    }
     //默认输出为一个DataFrame
     val outPutFilePipe = RowFilePipe.createEmptyFile(outPutFilePath)
     DockerExec.nonInteractiveExec(command.toArray, containerName) //"jyg-container"
-//    Thread.sleep(2000)
-//    DataFrame.empty()
     outPutFilePipe.dataFrame()
   }
 }
