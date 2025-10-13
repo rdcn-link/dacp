@@ -6,6 +6,7 @@ import link.rdcn.struct.{ClosableIterator, DataFrame, DefaultDataFrame, Row}
 import link.rdcn.util.DataUtils
 import link.rdcn.util.DataUtils.getDataFrameByStream
 import org.json.{JSONArray, JSONObject}
+import scala.concurrent.duration._
 
 import java.io.{BufferedReader, BufferedWriter, InputStreamReader, OutputStreamWriter}
 import java.net.{URL, URLClassLoader}
@@ -44,12 +45,13 @@ object TransformFunctionWrapper {
         val command = jo.getJSONArray("command").toList.asScala
         val outPutFilePath = jo.getString("outPutFilePath")
         val containerName = jo.getString("containerName")
+        val inputFifoPath = if(jo.has("inputFifoPath")) Some(jo.getJSONArray("inputFifoPath").toList.asScala) else None
         val hostPath = if(jo.has("hostPath")) Some(jo.getString("hostPath")) else None
         val containerPath = if(jo.has("containerPath")) Some(jo.getString("containerPath")) else None
         val imageName = if(jo.has("imageName")) Some(jo.getString("imageName")) else None
 
         FileRepositoryBundle(command.map(_.asInstanceOf[String]), outPutFilePath
-          , containerName, hostPath, containerPath, imageName)
+          , containerName, inputFifoPath.map(_.asInstanceOf[Seq[String]]), hostPath, containerPath, imageName)
       }
     }
   }
@@ -306,6 +308,7 @@ case class FileRepositoryBundle(
                                  command: Seq[String],
                                  outPutFilePath: String,
                                  containerName: String,
+                                 inputFifoPath: Option[Seq[String]] = None,
                                  hostPath: Option[String] = None,
                                  containerPath: Option[String] = None,
                                  imageName: Option[String] = None
@@ -317,6 +320,7 @@ case class FileRepositoryBundle(
     jo.put("command", new JSONArray(command))
     jo.put("outPutFilePath", outPutFilePath)
     jo.put("containerName", containerName)
+    jo.put("inputFifoPath", new JSONArray(inputFifoPath))
     hostPath.map(jo.put("hostPath", _))
     containerPath.map(jo.put("containerPath", _))
     imageName.map(jo.put("imageName", _))
@@ -324,12 +328,18 @@ case class FileRepositoryBundle(
   }
 
   override def applyToDataFrames(inputs: Seq[DataFrame], ctx: FlowExecutionContext): DataFrame = {
+    inputFifoPath.foreach(_.foreach { path =>
+      // 这里会阻塞，直到生产者调用了 signalFifoCreated
+      ctx.awaitFifoCreated(path, 30.seconds) // 设置一个合理的超时
+    })
+
     //允许指定运行容器，避免重复启动相同容器
     if(!DockerExec.isContainerRunning(containerName)){
       DockerExec.startContainer(hostPath.get, containerPath.get, containerName, imageName.get)
     }
     //默认输出为一个DataFrame
     val outPutFilePipe = RowFilePipe.createEmptyFile(outPutFilePath)
+    ctx.signalFifoCreated(outPutFilePath)
     DockerExec.nonInteractiveExec(command.toArray, containerName) //"jyg-container"
     outPutFilePipe.dataFrame()
   }

@@ -21,8 +21,7 @@ class TransformTreeTest {
   private val OP2_DIR = Paths.get(CONTAINER_DIR, "op3", "op3.py").toString
   private val OP2_OUTPUT = Paths.get(HOST_DIR, "op3", "suscep_hdyro_fifo.csv").toString
 
-  private def ctx = new FlowExecutionContext {
-    override val isAsyncEnabled = true
+  private val ctx = new FlowExecutionContext {
 
     override val fairdHome: String = ""
 
@@ -51,42 +50,58 @@ class TransformTreeTest {
 
     val jo2 = new JSONObject()
     val commandArray2 = new JSONArray()
+    val inputArray2 = new JSONArray()
     commandArray2.put("python")
     commandArray2.put(OP2_DIR)
+    inputArray2.put(OP1_OUTPUT)
     jo2.put("type", LangTypeV2.FILE_REPOSITORY_BUNDLE.name)
     jo2.put("command", commandArray2)
     jo2.put("outPutFilePath", OP2_OUTPUT)
     jo2.put("containerName", JYG_CONTAINER_NAME)
+    jo2.put("inputFifoPath", inputArray2)
     val transformTree2 = TransformerNode(TransformFunctionWrapper.fromJsonObject(jo2).asInstanceOf[FileRepositoryBundle], SourceOp(""))
     val transformTree1 = TransformerNode(TransformFunctionWrapper.fromJsonObject(jo1).asInstanceOf[FileRepositoryBundle], SourceOp(""))
 
-        val future1: Future[Unit] = Future {
-          println("transformTree1 execution started...")
-    transformTree1.execute(ctx) // Assuming this returns Unit
-          println("transformTree1 execution finished.")
-        }
+    // 1. 将整个流水线操作封装在一个大的 Future 中，以便让它在后台异步运行。
+    val pipelineFuture: Future[Unit] = Future {
+      // 在这个 Future 内部，我们并行启动两个需要相互阻塞的脚本
 
-        val future2: Future[Unit] = Future {
-          println("transformTree2 execution started...")
-          transformTree2.execute(ctx) // Assuming this returns Unit
-          println("transformTree2 execution finished.")
-        }
-        val combinedFuture = for {
-          _ <- future1
-          _ <- future2
-        } yield ()
-        Thread.sleep(2000)
-        // 阻塞主线程，直到 combinedFuture 完成，或者超时
-        println("主线程正在等待所有异步任务完成...")
-        try {
-          // 设置一个合理的超时时间，例如1分钟。如果超过这个时间任务还未完成，将会抛出 TimeoutException
-          Await.result(combinedFuture, 1.minute)
-          println("所有异步任务均已成功完成！")
-        } catch {
-          case e: Exception =>
-            println(s"等待任务完成时发生错误: ${e.getMessage}")
-        }
+      // 2. 在一个线程中启动生产者（它会阻塞直到消费者连接）
+      val producerFuture = Future {
+        println("生产者(transformTree1)启动中...")
+        transformTree1.execute(ctx) // 这个调用会阻塞
+        println("生产者(transformTree1)执行完毕。")
       }
+
+      // 3. 在另一个线程中启动消费者（它会阻塞直到生产者写入）
+      val consumerFuture = Future {
+        println("消费者(transformTree2)启动中...")
+        transformTree2.execute(ctx) // 这个调用会阻塞
+        println("消费者(transformTree2)执行完毕。")
+      }
+
+      // 4. 等待这两个部分都完成
+      //    用 for-comprehension 等待两个 future，确保整个 pipelineFuture 在两者都结束后才算完成
+      val combined = for {
+        _ <- producerFuture
+        _ <- consumerFuture
+      } yield ()
+
+      // 在这里阻塞 Future 内部的线程，直到两个脚本都完成
+      Await.result(combined, 5.minutes)
+    }
+
+    // 5. 在主线程中等待整个流水线的完成
+    println("主线程等待整个流水线完成...")
+    try {
+      Await.result(pipelineFuture, 5.minutes)
+      println("测试成功：生产者-消费者流水线成功执行完毕！")
+    } catch {
+      case e: Exception =>
+        println(s"测试失败：流水线执行出错: ${e.getMessage}")
+        e.printStackTrace()
+    }
+  }
 
 
 }

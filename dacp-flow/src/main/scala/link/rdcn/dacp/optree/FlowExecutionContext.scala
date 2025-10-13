@@ -1,14 +1,12 @@
 package link.rdcn.dacp.optree
 
 import jep.SubInterpreter
-import link.rdcn.operation.TransformOp
 import link.rdcn.struct.DataFrame
 import link.rdcn.user.Credentials
 
 import java.util.concurrent.ConcurrentHashMap
-import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.util.{Failure, Success}
 import scala.concurrent.duration._
+import scala.concurrent.{Await, Promise}
 
 /**
  * @Author renhao
@@ -18,30 +16,52 @@ import scala.concurrent.duration._
  */
 trait FlowExecutionContext extends link.rdcn.operation.ExecutionContext {
 
-  private[this] val asyncResults = new ConcurrentHashMap[TransformOp, Future[DataFrame]]()
-  implicit protected val asyncExecutionContext: ExecutionContext =
-    ExecutionContext.fromExecutorService(java.util.concurrent.Executors.newWorkStealingPool(8))
+  private val fifoCreationPromises = new ConcurrentHashMap[String, Promise[Unit]]()
 
-  def registerAsyncResult(transformOp: TransformOp, future: Future[DataFrame]): Unit = {
-    asyncResults.put(transformOp, future)
-    val resultDataFrame = Await.result(future, 1.minute)
-    future.onComplete {
-      case Success(df) =>
-      case Failure(e) =>
-        asyncResults.remove(transformOp)
-        throw new Exception(s"TransformOp $transformOp failed", e)
-    }(asyncExecutionContext)
+  /**
+   * 获取或创建一个与特定 FIFO 文件路径关联的 Promise。
+   * 这是线程安全的，确保对于同一个路径，我们只创建一个 Promise。
+   */
+  private def getOrCreateFifoPromise(path: String): Promise[Unit] = {
+    fifoCreationPromises.computeIfAbsent(path, _ => Promise[Unit]())
   }
 
-  def getAsyncResult(transformOp: TransformOp): Option[Future[DataFrame]] = {
-    Option(asyncResults.get(transformOp))
+  /**
+   * 消费者调用此方法来等待生产者发出信号。
+   * 它会阻塞当前线程，直到对应的 FIFO 文件被创建。
+   *
+   * @param fifoPath 要等待的 FIFO 文件的绝对路径
+   * @param timeout  等待的超时时间
+   */
+  def awaitFifoCreated(fifoPath: String, timeout: Duration): Unit = {
+    println(s"INFO: [Consumer] Waiting for FIFO file to be created at: $fifoPath")
+    val promise = getOrCreateFifoPromise(fifoPath)
+    try {
+      // Await.result 会阻塞，直到 promise.success(()) 被调用
+      Await.result(promise.future, timeout)
+      println(s"INFO: [Consumer] Signal received. FIFO file is ready at: $fifoPath")
+    } catch {
+      case e: Exception =>
+        println(s"ERROR: [Consumer] Timed out while waiting for FIFO file at: $fifoPath")
+        throw e // 超时后抛出异常
+    }
+  }
+
+  /**
+   * 生产者在创建完 FIFO 文件后调用此方法。
+   * 唤醒正在等待的消费者。
+   *
+   * @param fifoPath 已创建的 FIFO 文件的绝对路径
+   */
+  def signalFifoCreated(fifoPath: String): Unit = {
+    val promise = getOrCreateFifoPromise(fifoPath)
+    promise.success(())
+    println(s"INFO: [Producer] Signaled that FIFO file is ready at: $fifoPath")
   }
 
   val fairdHome: String
 
   def pythonHome: String
-
-  def isAsyncEnabled: Boolean = false
 
   def loadRemoteDataFrame(baseUrl: String, path:String, credentials: Credentials): Option[DataFrame]
 

@@ -110,20 +110,6 @@ case class TransformerNode(transformFunctionWrapper: TransformFunctionWrapper, i
   //a.py b.py c.py
   override def execute(ctx: ExecutionContext): DataFrame = {
     val flowCtx = ctx.asInstanceOf[FlowExecutionContext]
-    if(flowCtx.isAsyncEnabled){
-      val future:Future[DataFrame] = Future {
-        try {
-          transformFunctionWrapper.applyToDataFrames(inputs.map(_.execute(ctx)), flowCtx)
-        } catch {
-          case t: Throwable =>
-            t.printStackTrace()
-            DataFrame.empty()
-        }
-      }
-      flowCtx.registerAsyncResult(this, future)
-      DataFrame.empty()
-    }else{
       transformFunctionWrapper.applyToDataFrames(inputs.map(_.execute(ctx)), flowCtx)
-    }
   }
 }
