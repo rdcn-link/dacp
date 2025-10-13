@@ -143,6 +143,9 @@ abstract class DataProviderImpl extends DataProvider {
     dataSet.getMetadata(rdfModel)
   }
 
+  override def getDataFrameMetaData(dataFrameName: String, rdfModel: Model): Unit = {
+  }
+
   def listDataFrameNames(dataSetName: String): java.util.List[String] = {
     val dataSet: DataSet = dataSetsScalaList.find(_.dataSetName == dataSetName).getOrElse(return new java.util.ArrayList)
     dataSet.dataFrames.map(_.name).asJava

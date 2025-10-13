@@ -56,6 +56,18 @@ class DacpClient(host: String, port: Int, useTLS: Boolean = false) extends DftpC
     model
   }
 
+  def getDataFrameMetaData(dfName: String): Model = {
+    val model = ModelFactory.createDefaultModel()
+    val rdfString = new String(doAction(s"/getDataFrameMetaData/${dfName}"), "UTF-8").trim
+    rdfString match {
+      case s if s.nonEmpty =>
+        val reader = new StringReader(s)
+        model.read(reader, null, "RDF/XML")
+      case _ =>
+    }
+    model
+  }
+
   def executeTransformTree(transformOp: TransformOp): DataFrame = {
     val schemaAndRow = getCookRows(transformOp.toJsonString)
     DefaultDataFrame(schemaAndRow._1, schemaAndRow._2)

@@ -132,6 +132,7 @@ class UnionServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPr
   override def doAction(request: ActionRequest, response: ActionResponse): Unit = {
     request.getActionName() match {
       case name if name.startsWith("/getDataSetMetaData/") ||
+        name.startsWith("/getDataFrameMetaData/") ||
         name.startsWith("/getDocument/") ||
         name.startsWith("/getStatistics/") ||
         name.startsWith("/getDataFrameSize/") =>
@@ -237,6 +238,8 @@ object UnionServer {
     override def getDocument(dataFrameName: String): DataFrameDocument = ???
 
     override def getStatistics(dataFrameName: String): DataFrameStatistics = ???
+
+    override def getDataFrameMetaData(dataFrameName: String, rdfModel: Model): Unit = ???
   }
   private val dataReceiver = new DataReceiver {
     override def receive(dataFrame: DataFrame): Unit = ???

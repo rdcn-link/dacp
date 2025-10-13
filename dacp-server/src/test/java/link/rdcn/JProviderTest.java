@@ -131,6 +131,11 @@ public class JProviderTest {
                 }
             }
 
+            @Override
+            public void getDataFrameMetaData(String dataFrameName, Model rdfModel) {
+                
+            }
+
             /**
              * 列出指定DataSet的DataFrame名称列表
              *

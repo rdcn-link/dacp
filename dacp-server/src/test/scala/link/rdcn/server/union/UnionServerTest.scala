@@ -75,6 +75,14 @@ object UnionServerTest {
 
         override def byteSize: Long = -1
       }
+
+      /**
+       * 获取数据集的 RDF 元数据，填充到传入的 rdfModel 中
+       *
+       * @param dataFrameName 数据帧名（如 /mnt/a.csv)
+       * @param rdfModel      RDF 模型（由调用者传入，方法将其填充）
+       */
+      override def getDataFrameMetaData(dataFrameName: String, rdfModel: Model): Unit = ???
     }
 
     val dataProviderTest2 = new DataProvider {
@@ -120,6 +128,15 @@ object UnionServerTest {
         override def rowCount: Long = -1
 
         override def byteSize: Long = -1
+      }
+
+      /**
+       * 获取数据集的 RDF 元数据，填充到传入的 rdfModel 中
+       *
+       * @param dataFrameName 数据帧名（如 /mnt/a.csv)
+       * @param rdfModel      RDF 模型（由调用者传入，方法将其填充）
+       */
+      override def getDataFrameMetaData(dataFrameName: String, rdfModel: Model): Unit = {
       }
     }
 

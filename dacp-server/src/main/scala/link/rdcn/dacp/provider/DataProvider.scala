@@ -30,6 +30,14 @@ trait DataProvider {
   def getDataSetMetaData(dataSetId: String, rdfModel: Model): Unit
 
   /**
+   * 获取数据集的 RDF 元数据，填充到传入的 rdfModel 中
+   *
+   * @param dataFrameName 数据帧名（如 /mnt/a.csv)
+   * @param rdfModel  RDF 模型（由调用者传入，方法将其填充）
+   */
+  def  getDataFrameMetaData(dataFrameName: String, rdfModel: Model): Unit
+
+  /**
    * 列出指定数据集下的所有数据帧名称
    *
    * @param dataSetId 数据集 ID

@@ -139,6 +139,13 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
         val writer = new StringWriter();
         model.write(writer, "RDF/XML");
         response.send(writer.toString.getBytes("UTF-8"))
+      case name if name.startsWith("/getDataFrameMetaData/") =>
+        val model: Model = ModelFactory.createDefaultModel
+        val prefix: String = "/getDataFrameMetaData/"
+        dataProvider.getDataFrameMetaData(name.replaceFirst(prefix, ""), model)
+        val writer = new StringWriter();
+        model.write(writer, "RDF/XML");
+        response.send(writer.toString.getBytes("UTF-8"))
       case name if name.startsWith("/getDocument/") =>
         val prefix: String = "/getDocument/"
         response.send(getDataFrameDocumentJsonString(name.replaceFirst(prefix, "")).getBytes("UTF-8"))
