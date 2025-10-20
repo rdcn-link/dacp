@@ -4,7 +4,6 @@ import link.rdcn.client.{DftpClient, RemoteDataFrameProxy, UrlValidator}
 import link.rdcn.dacp.optree.{LangTypeV2, RepositoryOperator, TransformFunctionWrapper, TransformerNode}
 import link.rdcn.dacp.recipe.{ExecutionResult, Flow, FlowPath, RepositoryNode, SourceNode, Transformer11, Transformer21}
 import link.rdcn.dacp.struct.{CookTicket, DataFrameDocument, DataFrameStatistics}
-import link.rdcn.dacp.user.KeyCredentials
 import link.rdcn.operation.{DataFrameCall11, DataFrameCall21, SerializableFunction, SourceOp, TransformOp}
 import link.rdcn.struct.{ClosableIterator, DFRef, DataFrame, DefaultDataFrame, Row, StructType}
 import link.rdcn.user.{AnonymousCredentials, Credentials, TokenAuth, UsernamePassword}
@@ -121,7 +120,7 @@ class DacpClient(host: String, port: Int, useTLS: Boolean = false) extends DftpC
   }
 
   def getCookRows(transformOpStr: String): (StructType, ClosableIterator[Row]) = {
-    val schemaAndIter = getStream(flightClient, new Ticket(CookTicket(transformOpStr).encodeTicket()))
+    val schemaAndIter = getStream(new Ticket(CookTicket(transformOpStr).encodeTicket()))
     val stream = schemaAndIter._2.map(seq => Row.fromSeq(seq))
     (schemaAndIter._1, ClosableIterator(stream)())
   }
