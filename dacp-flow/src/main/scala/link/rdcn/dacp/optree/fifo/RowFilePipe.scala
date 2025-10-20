@@ -1,8 +1,8 @@
 package link.rdcn.dacp.optree.fifo
 
-import link.rdcn.struct.{DataFrame, DefaultDataFrame}
+import link.rdcn.dacp.optree.TransformerNode
+import link.rdcn.struct.{ClosableIterator, DataFrame, DefaultDataFrame, Row, StructType}
 import link.rdcn.util.DataUtils
-import link.rdcn.struct.{Row, StructType}
 import link.rdcn.struct.ValueType.StringType
 
 import java.io.{BufferedReader, File, FileReader, FileWriter, PrintWriter}
@@ -26,8 +26,8 @@ case class RowFilePipe(file: File) extends FilePipe(file) {
     }
   }
 
-  def read(): Iterator[String] = {
-    new Iterator[String] {
+  def read(): ClosableIterator[String] = {
+    val iter = new Iterator[String] {
       private val reader = new BufferedReader(new FileReader(file))
       private var nextLine: String = reader.readLine()
       private var isClosed = false
@@ -53,6 +53,7 @@ case class RowFilePipe(file: File) extends FilePipe(file) {
         current
       }
     }
+    ClosableIterator(iter)(() => {})
   }
 
   def fromExistFile(sourceFile: File): RowFilePipe = {
@@ -61,18 +62,19 @@ case class RowFilePipe(file: File) extends FilePipe(file) {
   }
 
   override def dataFrame(): DataFrame =
-    DefaultDataFrame(StructType.empty.add("content", StringType), read().map(Row.fromSeq(_)))
+    DefaultDataFrame(StructType.empty.add("content", StringType),
+      ClosableIterator(read().map(str => Row.fromSeq(Seq(str))))())
 }
 
 object RowFilePipe {
 
-  def createEmptyFile(path: String): RowFilePipe = {
+  def fromFilePath(path: String): RowFilePipe = {
     val pipe = new RowFilePipe(new File(path))
     pipe.create()
     pipe
   }
 
-  def createEmptyFile(file: File): RowFilePipe = {
+  def fromFile(file: File): RowFilePipe = {
     val pipe = new RowFilePipe(file)
     pipe.create()
     pipe

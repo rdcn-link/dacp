@@ -1,13 +1,13 @@
 package link.rdcn.dacp.optree
 
-import link.rdcn.dacp.optree.fifo.{DockerExec, RowFilePipe}
+import link.rdcn.dacp.optree.fifo.{DockerContainer, DockerExecute, RowFilePipe}
 import link.rdcn.operation.{ExecutionContext, FunctionSerializer, FunctionWrapper, GenericFunctionCall}
 import link.rdcn.struct.{ClosableIterator, DataFrame, DefaultDataFrame, Row}
 import link.rdcn.util.DataUtils
 import link.rdcn.util.DataUtils.getDataFrameByStream
 import org.json.{JSONArray, JSONObject}
 
-import java.io.{BufferedReader, BufferedWriter, InputStreamReader, OutputStreamWriter}
+import java.io.{BufferedReader, BufferedWriter, File, InputStreamReader, OutputStreamWriter}
 import java.net.{URL, URLClassLoader}
 import java.nio.file.Paths
 import java.util.{Base64, ServiceLoader, UUID}
@@ -41,15 +41,12 @@ object TransformFunctionWrapper {
       case LangTypeV2.CPP_BIN.name => CppBin(jo.getString("cppPath"))
       case LangTypeV2.REPOSITORY_OPERATOR.name => RepositoryOperator(jo.getString("functionID"))
       case LangTypeV2.FILE_REPOSITORY_BUNDLE.name => {
-        val command = jo.getJSONArray("command").toList.asScala
-        val outPutFilePath = jo.getString("outPutFilePath")
-        val containerName = jo.getString("containerName")
-        val hostPath = if(jo.has("hostPath")) Some(jo.getString("hostPath")) else None
-        val containerPath = if(jo.has("containerPath")) Some(jo.getString("containerPath")) else None
-        val imageName = if(jo.has("imageName")) Some(jo.getString("imageName")) else None
+        val command = jo.getJSONArray("command").toList.asScala.map(_.toString)
+        val inputFilePath = jo.getJSONArray("inputFilePath").toList.asScala.map(_.toString)
+        val outPutFilePath = jo.getJSONArray("outputFilePath").toList.asScala.map(_.toString)
+        val dockerContainer = DockerContainer.fromJson(jo.getJSONObject("dockerContainer"))
 
-        FileRepositoryBundle(command.map(_.asInstanceOf[String]), outPutFilePath
-          , containerName, hostPath, containerPath, imageName)
+        FileRepositoryBundle(command, inputFilePath, outPutFilePath, dockerContainer)
       }
     }
   }
@@ -304,33 +301,34 @@ case class RepositoryOperator(functionID: String) extends TransformFunctionWrapp
 
 case class FileRepositoryBundle(
                                  command: Seq[String],
-                                 outPutFilePath: String,
-                                 containerName: String,
-                                 hostPath: Option[String] = None,
-                                 containerPath: Option[String] = None,
-                                 imageName: Option[String] = None
+                                 inputFilePath: Seq[String],
+                                 outputFilePath: Seq[String],
+                                 dockerContainer: DockerContainer
                                )
   extends TransformFunctionWrapper {
 
   override def toJson: JSONObject = {
     val jo = new JSONObject
-    jo.put("command", new JSONArray(command))
-    jo.put("outPutFilePath", outPutFilePath)
-    jo.put("containerName", containerName)
-    hostPath.map(jo.put("hostPath", _))
-    containerPath.map(jo.put("containerPath", _))
-    imageName.map(jo.put("imageName", _))
+    jo.put("type", LangTypeV2.FILE_REPOSITORY_BUNDLE.name)
+    jo.put("command", new JSONArray(command.asJava))
+    jo.put("inputFilePath", new JSONArray(inputFilePath.asJava))
+    jo.put("outputFilePath", new JSONArray(outputFilePath.asJava))
+    jo.put("dockerContainer", dockerContainer.toJson())
     jo
   }
 
+  def deleteFiFOFile(): Unit = {
+    outputFilePath.foreach(filePath => {
+      Runtime.getRuntime.exec(Array("rm", "-rf", filePath))
+    })
+  }
+
   override def applyToDataFrames(inputs: Seq[DataFrame], ctx: FlowExecutionContext): DataFrame = {
-    //允许指定运行容器，避免重复启动相同容器
-    if(imageName.isEmpty || !DockerExec.isContainerRunning(containerName)){
-      DockerExec.startContainer(hostPath.get, containerPath.get, containerName, imageName.get)
-    }
-    //默认输出为一个DataFrame
-    val outPutFilePipe = RowFilePipe.createEmptyFile(outPutFilePath)
-    DockerExec.nonInteractiveExec(command.toArray, containerName) //"jyg-container"
-    outPutFilePipe.dataFrame()
+    dockerContainer.start()
+    //创建fifo文件
+    (inputFilePath ++ outputFilePath).foreach(path=>RowFilePipe.fromFilePath(path))
+    DockerExecute.nonInteractiveExec(command.toArray, dockerContainer.containerName) //"jyg-container"
+    //TODO 支持输出多个DataFrame 对应多个fifo文件
+    RowFilePipe(new File(outputFilePath.head)).dataFrame()
   }
 }

@@ -99,23 +99,6 @@ object BinaryFilePipe {
     pipe
   }
 
-  def fromDataFrame(file: File, dataFrame: DataFrame): BinaryFilePipe = {
-    val binaryFilePipe = createEmptyFile(file)
-    dataFrame.mapIterator(iter => {
-      binaryFilePipe.write(iter.map(_.getAs[Array[Byte]](0)))
-    })
-    binaryFilePipe
-  }
-
-  def fromExistFile(file: File, sourceFile: File): BinaryFilePipe = {
-    val binaryFilePipe = createEmptyFile(file)
-    val bytes = Files.readAllBytes(Paths.get(sourceFile.getPath))
-    new Thread(() => {
-      binaryFilePipe.write(Seq(bytes).iterator)
-    }).start()
-    binaryFilePipe
-  }
-
   def createEmptyFile(file: File): BinaryFilePipe = {
     val pipe = new BinaryFilePipe(file)
     pipe.create()

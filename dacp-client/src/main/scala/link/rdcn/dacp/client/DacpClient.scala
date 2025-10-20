@@ -1,8 +1,8 @@
 package link.rdcn.dacp.client
 
 import link.rdcn.client.{DftpClient, RemoteDataFrameProxy, UrlValidator}
-import link.rdcn.dacp.optree.{LangTypeV2, RepositoryOperator, TransformFunctionWrapper, TransformerNode}
-import link.rdcn.dacp.recipe.{ExecutionResult, Flow, FlowPath, RepositoryNode, SourceNode, Transformer11, Transformer21}
+import link.rdcn.dacp.optree.{FiFoFileNode, FileRepositoryBundle, LangTypeV2, RepositoryOperator, TransformFunctionWrapper, TransformerNode}
+import link.rdcn.dacp.recipe.{ExecutionResult, FifoFileBundleFlowNode, FifoFileFlowNode, Flow, FlowPath, RepositoryNode, SourceNode, Transformer11, Transformer21}
 import link.rdcn.dacp.struct.{CookTicket, DataFrameDocument, DataFrameStatistics}
 import link.rdcn.operation.{DataFrameCall11, DataFrameCall21, SerializableFunction, SourceOp, TransformOp}
 import link.rdcn.struct.{ClosableIterator, DFRef, DataFrame, DefaultDataFrame, Row, StructType}
@@ -12,6 +12,7 @@ import org.apache.jena.rdf.model.{Model, ModelFactory}
 import org.json.{JSONArray, JSONObject}
 
 import java.io.{File, StringReader}
+import scala.collection.JavaConverters.asJavaCollectionConverter
 import scala.collection.JavaConverters.asScalaIteratorConverter
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -55,18 +56,6 @@ class DacpClient(host: String, port: Int, useTLS: Boolean = false) extends DftpC
     model
   }
 
-  def getDataFrameMetaData(dfName: String): Model = {
-    val model = ModelFactory.createDefaultModel()
-    val rdfString = new String(doAction(s"/getDataFrameMetaData/${dfName}"), "UTF-8").trim
-    rdfString match {
-      case s if s.nonEmpty =>
-        val reader = new StringReader(s)
-        model.read(reader, null, "RDF/XML")
-      case _ =>
-    }
-    model
-  }
-
   def executeTransformTree(transformOp: TransformOp): DataFrame = {
     val schemaAndRow = getCookRows(transformOp.toJsonString)
     DefaultDataFrame(schemaAndRow._1, schemaAndRow._2)
@@ -98,7 +87,8 @@ class DacpClient(host: String, port: Int, useTLS: Boolean = false) extends DftpC
         val genericFunctionCall = DataFrameCall11(new SerializableFunction[DataFrame, DataFrame] {
           override def apply(v1: DataFrame): DataFrame = f.transform(v1)
         })
-        val transformerNode: TransformerNode = TransformerNode(TransformFunctionWrapper.getJavaSerialized(genericFunctionCall), transformFlowToOperation(path.children.head))
+        val transformerNode: TransformerNode = TransformerNode(TransformFunctionWrapper.getJavaSerialized(genericFunctionCall),
+          transformFlowToOperation(path.children.head))
         transformerNode
       case f: Transformer21 =>
         val genericFunctionCall = DataFrameCall21(new SerializableFunction[(DataFrame, DataFrame), DataFrame] {
@@ -112,8 +102,22 @@ class DacpClient(host: String, port: Int, useTLS: Boolean = false) extends DftpC
         val jo = new JSONObject()
         jo.put("type", LangTypeV2.REPOSITORY_OPERATOR.name)
         jo.put("functionID", node.functionId)
-        val transformerNode: TransformerNode = TransformerNode(TransformFunctionWrapper.fromJsonObject(jo).asInstanceOf[RepositoryOperator], transformFlowToOperation(path.children.head))
+        val transformerNode: TransformerNode = TransformerNode(
+          TransformFunctionWrapper.fromJsonObject(jo).asInstanceOf[RepositoryOperator],
+          transformFlowToOperation(path.children.head))
         transformerNode
+      case FifoFileBundleFlowNode(command, inputFilePath, outputFilePath, dockerContainer) =>
+        val jo = new JSONObject()
+        jo.put("type", LangTypeV2.FILE_REPOSITORY_BUNDLE.name)
+        jo.put("command", new JSONArray(command.asJavaCollection))
+        jo.put("inputFilePath", new JSONArray(inputFilePath.asJavaCollection))
+        jo.put("outputFilePath", new JSONArray(outputFilePath.asJavaCollection))
+        jo.put("dockerContainer", dockerContainer.toJson())
+        val transformerNode: TransformerNode = TransformerNode(
+          TransformFunctionWrapper.fromJsonObject(jo).asInstanceOf[FileRepositoryBundle],
+          path.children.map(transformFlowToOperation(_)): _* )
+        transformerNode
+      case FifoFileFlowNode(filePath) => FiFoFileNode(filePath, path.children.map(transformFlowToOperation(_)): _*)
       case s: SourceNode => SourceOp(s.dataFrameName)
       case other => throw new IllegalArgumentException(s"This FlowNode ${other} is not supported please extend Transformer11 trait")
     }
@@ -162,10 +166,10 @@ class DacpClient(host: String, port: Int, useTLS: Boolean = false) extends DftpC
   }
 
   def getDataFrameSize(dataFrameName: String): Long = {
-      new String(doAction(s"/getDataFrameSize/${dataFrameName}"), "UTF-8").trim match {
-        case s if s.nonEmpty => s.asInstanceOf[Long]
-        case _ => 0L
-      }
+    new String(doAction(s"/getDataFrameSize/${dataFrameName}"), "UTF-8").trim match {
+      case s if s.nonEmpty => s.asInstanceOf[Long]
+      case _ => 0L
+    }
   }
 
   def getHostInfo: Map[String, String] = {

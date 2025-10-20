@@ -2,15 +2,14 @@ package link.rdcn.dacp.optree.fifo
 
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.command.CreateContainerResponse
-import com.github.dockerjava.api.model.{Bind, Volume, Container}
+import com.github.dockerjava.api.model.{Bind, Container, Volume}
 import com.github.dockerjava.core.{DefaultDockerClientConfig, DockerClientBuilder}
 import com.github.dockerjava.api.model.{Frame, StreamType}
 import com.github.dockerjava.core.command.ExecStartResultCallback
 
 import scala.collection.JavaConverters._
 
-object DockerExec {
-
+object DockerExecute {
 
   /**
    * 检查指定名称的容器是否正在运行
@@ -79,7 +78,7 @@ object DockerExec {
   }
 
   // Array("python","op1.py")
-  def nonInteractiveExec(command: Array[String], containerId: String): Unit = {
+  def nonInteractiveExec(command: Array[String], containerId: String): String = {
     val config = DefaultDockerClientConfig.createDefaultConfigBuilder().build()
     val dockerClient: DockerClient = DockerClientBuilder.getInstance(config).build()
 
@@ -114,6 +113,7 @@ object DockerExec {
 
       println("命令执行结果:")
       println(output.toString())
+      output.toString()
 
     } finally {
       dockerClient.close()
