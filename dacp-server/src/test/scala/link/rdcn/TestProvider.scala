@@ -102,6 +102,8 @@ object TestProvider {
     override val dataFramePaths: (String => String) = (relativePath: String) => {
       Paths.get(getOutputDir("test_output"), relativePath).toString
     }
+
+    override def getSchema(dataFrameName: String): StructType = ???
   }
   val dataReceiver: DataReceiver = new DataReceiver {
 

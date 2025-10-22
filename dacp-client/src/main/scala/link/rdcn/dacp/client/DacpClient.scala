@@ -61,9 +61,34 @@ class DacpClient(host: String, port: Int, useTLS: Boolean = false) extends DftpC
     DefaultDataFrame(schemaAndRow._1, schemaAndRow._2)
   }
 
-  //TODO: Remove this method and update related test cases accordingly
+  @deprecated
   def getByPath(path: String): DataFrame = {
     super.get(dacpUrlPrefix + path)
+  }
+
+  def getSchema(dataFrameName: String): StructType = {
+    val structTypeStr = new String(doAction(s"/getSchema/${dataFrameName}"), "UTF-8")
+    StructType.fromString(structTypeStr)
+  }
+
+  override def get(url: String): DataFrame = {
+    val urlValidator = new UrlValidator(prefixSchema)
+    if (urlValidator.isPath(url)) {
+      val schema = getSchema(url)
+      val document = getDocument(url)
+      RemoteGetDataFrameProxy(SourceOp(url), getRows, schema, document)
+    } else {
+      urlValidator.validate(url) match {
+        case Right((host, port, path)) => {
+          if (host == this.host && port.getOrElse(3101) == this.port) {
+            val schema = getSchema(path)
+            val document = getDocument(path)
+            RemoteGetDataFrameProxy(SourceOp(url), getRows, schema, document)
+          } else throw new IllegalArgumentException(s"Invalid request URL: $url  Expected format: $prefixSchema://${this.host}[:${this.port}]")
+        }
+        case Left(message) => throw new IllegalArgumentException(message)
+      }
+    }
   }
 
   //执行 recipe

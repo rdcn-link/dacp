@@ -4,7 +4,7 @@ import link.rdcn.TestBase.{getOutputDir, getResourcePath}
 import link.rdcn.dacp.receiver.DataReceiver
 import link.rdcn.dacp.user.{AuthProvider, DataOperationType}
 import link.rdcn.user.{Credentials, UserPrincipal}
-import link.rdcn.struct.{DataFrame, DataStreamSource}
+import link.rdcn.struct.{DataFrame, DataStreamSource, StructType}
 import org.apache.arrow.flight.Location
 import org.apache.arrow.memory.{BufferAllocator, RootAllocator}
 
@@ -46,6 +46,8 @@ object TestEmptyProvider {
     }
 
     override def getDataStreamSource(dataFrameName: String): DataStreamSource = ???
+
+    override def getSchema(dataFrameName: String): StructType = ???
   }
 
   val emptyDataReceiver: DataReceiver = new DataReceiver {

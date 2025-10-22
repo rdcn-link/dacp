@@ -182,6 +182,11 @@ public class JProviderTest {
                 return null;
             }
 
+            @Override
+            public StructType getSchema(String dataFrameName) {
+                return StructType.empty();
+            }
+
             /**
              * 根据DataFrame名称获取DataFrameStatistics
              * DataFrameStatistics用于封装rowCount等DataFrame统计信息

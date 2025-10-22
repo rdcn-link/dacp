@@ -1,7 +1,7 @@
 package link.rdcn.dacp.provider
 
 import link.rdcn.dacp.struct.{DataFrameDocument, DataFrameStatistics}
-import link.rdcn.struct.DataStreamSource
+import link.rdcn.struct.{DataStreamSource, StructType}
 import org.apache.jena.rdf.model.Model
 
 import java.util.{List => JList}
@@ -60,6 +60,8 @@ trait DataProvider {
    * @return 数据帧的DataFrameDocument
    */
   def getDocument(dataFrameName: String): DataFrameDocument
+
+  def getSchema(dataFrameName: String): StructType
 
   /** *
    * 获取数据帧统计信息

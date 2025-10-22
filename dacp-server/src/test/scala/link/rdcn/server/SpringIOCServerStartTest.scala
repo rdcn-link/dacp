@@ -131,6 +131,8 @@ class DataProviderTest extends DataProvider {
    */
   override def getDataFrameMetaData(dataFrameName: String, rdfModel: Model): Unit = {
   }
+
+  override def getSchema(dataFrameName: String): StructType = ???
 }
 
 case class TokenAuthenticatedUser(token: String) extends UserPrincipal

@@ -240,6 +240,8 @@ object UnionServer {
     override def getStatistics(dataFrameName: String): DataFrameStatistics = ???
 
     override def getDataFrameMetaData(dataFrameName: String, rdfModel: Model): Unit = ???
+
+    override def getSchema(dataFrameName: String): StructType = ???
   }
   private val dataReceiver = new DataReceiver {
     override def receive(dataFrame: DataFrame): Unit = ???

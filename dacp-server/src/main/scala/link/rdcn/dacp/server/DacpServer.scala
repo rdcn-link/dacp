@@ -152,6 +152,9 @@ class DacpServer(dataProvider: DataProvider, dataReceiver: DataReceiver, authPro
       case name if name.startsWith("/getStatistics/") =>
         val prefix: String = "/getStatistics/"
         response.send(getDataFrameStatisticsString(name.replaceFirst(prefix, "")).getBytes("UTF-8"))
+      case name if name.startsWith("/getSchema/") =>
+        val prefix: String = "/getSchema/"
+        response.send(dataProvider.getSchema(name.replaceFirst(prefix, "")).toString().getBytes("UTF-8"))
       case name if name.startsWith("getDataFrameSize") =>
         val prefix: String = "/getDataFrameSize/"
         response.send(dataProvider.getDataStreamSource(name.replaceFirst(prefix, "")).rowCount.toString.getBytes("UTF-8"))

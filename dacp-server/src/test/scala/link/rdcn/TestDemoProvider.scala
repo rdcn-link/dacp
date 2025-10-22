@@ -95,6 +95,7 @@ class TestDemoProvider(baseDirString: String = demoBaseDir, subDirString: String
       Paths.get(baseDir, relativePath).toString
     }
 
+    override def getSchema(dataFrameName: String): StructType = ???
   }
 
   // 默认构造函数
